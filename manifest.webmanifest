@@ -2,6 +2,7 @@
   "name": "Gestor de Campeonatos",
   "short_name": "Gestor",
   "description": "Gestão offline de campeonatos, equipes, atletas, jogos, classificação e súmulas.",
+  "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
