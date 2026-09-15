@@ -135,6 +135,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 }
 }
 </style>
+
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
@@ -647,15 +648,7 @@ function gerarRelatorioPDF(){
  d.save('relacao-atletas.pdf')
 }
 function imprimirRelatorio(){
- const c=contextoRelatorio(),w=window.open('','_blank');w.document.write(`<html><head><title>Relação de atletas</title><style>body{font-family:Arial;padding:25px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ccc;padding:7px;text-align:left}img{max-width:80px;max-height:80px}</style></head><body>${c.escolinha?.logo?`<img src="${c.escolinha.logo}">`:''}<h2>${esc(db.campeonato?.nome||'Campeonato')}</h2><h3>Relação de atletas inscritos</h3><p>Categoria: ${esc(c.cat)}<br>Escolinha: ${esc(c.escolinha?.nome||'Todas')}<br>Time: ${esc(c.time?.nomeTabela||'Todos')}</p><table><tr><th>Nº</th><th>Atleta</th><th>Nascimento</th><th>Categoria</th><th>Time</th></tr>${c.atletas.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.nome)}</td><td>${esc(dataBR(a.nascimento))}</td><td>${esc(a.categoria)}</td><td>${esc(timeNome(a.timeId))}</td></tr>`).join('')}</table><p><b>Total: ${c.atletas.length}</b></p><script>window.onload=()=>window.print()<\/script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
-  });
-}
-</script>
-</body></html>`);w.document.close()
+ const c=contextoRelatorio(),w=window.open('','_blank');w.document.write(`<html><head><title>Relação de atletas</title><style>body{font-family:Arial;padding:25px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ccc;padding:7px;text-align:left}img{max-width:80px;max-height:80px}</style></head><body>${c.escolinha?.logo?`<img src="${c.escolinha.logo}">`:''}<h2>${esc(db.campeonato?.nome||'Campeonato')}</h2><h3>Relação de atletas inscritos</h3><p>Categoria: ${esc(c.cat)}<br>Escolinha: ${esc(c.escolinha?.nome||'Todas')}<br>Time: ${esc(c.time?.nomeTabela||'Todos')}</p><table><tr><th>Nº</th><th>Atleta</th><th>Nascimento</th><th>Categoria</th><th>Time</th></tr>${c.atletas.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.nome)}</td><td>${esc(dataBR(a.nascimento))}</td><td>${esc(a.categoria)}</td><td>${esc(timeNome(a.timeId))}</td></tr>`).join('')}</table><p><b>Total: ${c.atletas.length}</b></p><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()
 }
 async function gerarRelatorioImagem(){
  const c=contextoRelatorio();if(!c.atletas.length)return alert("Não há atletas para gerar o relatório.");
@@ -1736,6 +1729,13 @@ function renderTudo(){
  }
 }
 renderTudo();
+
+// PWA V0.14: registra o Service Worker sem interferir no JavaScript do Gestor.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
+  });
+}
 </script>
 </body>
 </html>
