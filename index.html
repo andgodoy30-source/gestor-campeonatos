@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Gestor de Campeonatos V0.14 PWA</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+<style>
+:root{
+ --bg:#f3f5f7;--card:#fff;--text:#17212b;--muted:#667085;--border:#d9e0e7;
+ --green:#1f6f43;--green2:#175735;--blue:#2563eb;--red:#b42318;--amber:#b7791f;
+ --purple:#7656b5;--shadow:0 7px 22px rgba(0,0,0,.07)
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+header{background:linear-gradient(135deg,#174f33,#24764a);color:#fff;padding:18px 20px;position:sticky;top:0;z-index:30;box-shadow:0 3px 12px rgba(0,0,0,.15)}
+header h1{margin:0;font-size:22px} header p{margin:4px 0 0;font-size:13px;opacity:.88}
+.app{max-width:1280px;margin:auto;padding:18px}
+.nav{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px}
+.nav button{border:0;background:#fff;padding:12px 6px;border-radius:12px;box-shadow:var(--shadow);font-weight:700;cursor:pointer}
+.nav button.active{background:var(--green);color:#fff}
+.section{display:none}.section.active{display:block}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.card h2,.card h3{margin-top:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.stat{background:#fff;border-radius:14px;padding:13px;box-shadow:var(--shadow);border-left:5px solid var(--green)}
+.stat strong{font-size:25px;display:block}.stat span{color:var(--muted);font-size:12px}
+label{display:block;font-size:13px;font-weight:700;margin:9px 0 5px}
+input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:14px}
+textarea{min-height:90px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:700;cursor:pointer;margin-top:10px}
+.primary{background:var(--green);color:#fff}.primary:hover{background:var(--green2)}
+.secondary{background:var(--blue);color:#fff}.danger{background:var(--red);color:#fff}
+.light{background:#edf1f5;color:#24303d}.amber{background:var(--amber);color:#fff}.purple{background:var(--purple);color:#fff}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.item{background:#fbfcfd;border:1px solid var(--border);border-radius:11px;padding:11px}
+.item strong{display:block}.item small{color:var(--muted);line-height:1.5}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.actions button{border:0;border-radius:8px;padding:7px 10px;font-weight:700;cursor:pointer}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}
+.pendente{background:#fff1cc;color:#7a5200}.aprovada{background:#dff4e7;color:#155d37}.recusada{background:#fde5e3;color:#8d2018}
+.notice{padding:11px 13px;border-radius:10px;background:#edf6ff;border:1px solid #cfe5ff;font-size:13px;margin-bottom:12px}
+.warning{padding:10px;border-radius:9px;background:#fff7e6;border:1px solid #f0d59a;color:#6d4b00;font-size:12px;margin-top:8px}
+.filters{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.score{text-align:center;font-size:26px;font-weight:800;margin:10px 0}
+.checkbox-list label{display:flex;align-items:center;gap:7px;font-weight:400;margin:6px 0}.checkbox-list input{width:auto}
+.source{font-size:11px;color:#5d6672;background:#eef1f4;border-radius:999px;padding:3px 7px}
+.empty{color:var(--muted);font-size:13px}
+hr{border:0;border-top:1px solid var(--border);margin:14px 0}
+.footer{font-size:12px;color:var(--muted);margin-top:16px}
+.cat-row{display:flex;gap:8px;align-items:center}.cat-row input{flex:1}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:#e9f5ee;color:#174f33;border:1px solid #c8e5d3;border-radius:999px;padding:6px 9px;font-size:12px;font-weight:700}
+.chip button{border:0;background:transparent;color:#8c1d18;font-weight:800;cursor:pointer;padding:0}
+.catbadge{display:inline-block;background:#edf4ff;color:#234f91;border-radius:999px;padding:3px 7px;font-size:11px;font-weight:700;margin:2px 3px 2px 0}
+.teamtag{display:inline-block;background:#f1ebff;color:#5e4394;border-radius:999px;padding:3px 7px;font-size:11px;font-weight:700;margin:2px 3px 2px 0}
+.backupbox{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.backupbox input{max-width:300px}
+
+.logo-preview{width:92px;height:92px;border:1px dashed var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fafbfc;margin-top:8px}
+.logo-preview img{width:100%;height:100%;object-fit:contain}
+.logo-mini{width:42px;height:42px;object-fit:contain;border-radius:9px;border:1px solid var(--border);background:#fff;padding:2px;flex:0 0 auto}
+.item-flex{display:flex;align-items:center;gap:10px}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.auto-ok{background:#e8f7ee;border:1px solid #bfe3cc;color:#175b37;padding:8px 10px;border-radius:9px;font-size:12px;margin-top:8px}
+
+.share-box{margin-top:18px;padding:16px;border:1px solid var(--border);border-radius:14px;background:#fafbfc}
+.share-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+.sumula-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+.sumula-col{background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px}
+.sumula-head{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+.sumula-head img{width:54px;height:54px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid var(--border);padding:2px}
+.sumula-head h3{margin:0;text-align:center}
+.player-row{display:grid;grid-template-columns:auto 76px 1fr;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #eef1f4}
+.player-row input[type=checkbox]{width:auto}
+.player-row input[type=number]{padding:7px}
+.event-box{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.event-list{margin-top:8px;font-size:13px}
+
+.timer-box{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0;padding:12px;background:#eef3f6;border:1px solid var(--border);border-radius:12px}
+.timer-display{font-size:30px;font-weight:800;min-width:110px;text-align:center}
+.final-sumula{margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:14px;background:#fafbfc}
+
+.sumula-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.sumula-meta .meta-card{background:#f7f9fb;border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+.sumula-meta strong{display:block;font-size:12px;color:#667085;text-transform:uppercase;letter-spacing:.5px}
+.sumula-meta span{display:block;font-size:18px;font-weight:800;margin-top:3px}
+
+.sumula-preview{background:#f7f9fb;border:1px solid var(--border);border-radius:18px;padding:18px;margin-top:18px}
+.preview-sheet{background:#fff;border:1px solid #d5dde6;border-radius:12px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.preview-top{text-align:center;border-bottom:2px solid #174f33;padding-bottom:12px;margin-bottom:14px}
+.preview-top h2{margin:0;font-size:24px}.preview-top h3{margin:4px 0 0;font-size:16px}
+.preview-meta{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}
+.preview-meta div{background:#eef3f7;border-radius:9px;padding:8px;text-align:center}
+.preview-meta small{display:block;color:#667085;font-weight:700;text-transform:uppercase}
+.preview-meta strong{display:block;margin-top:3px}
+.preview-score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin:18px 0}
+.preview-team{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+.preview-team.right{justify-content:flex-end;text-align:right}
+.preview-team img{width:58px;height:58px;object-fit:contain;border:1px solid #d9e0e7;border-radius:10px;padding:3px;background:#fff}
+.preview-score-num{font-size:30px;font-weight:900;background:#edf2f6;border-radius:10px;padding:10px 16px}
+.preview-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.preview-col{border:1px solid #d8e0e8;border-radius:12px;overflow:hidden}
+.preview-col h3{margin:0;background:#145b9e;color:#fff;padding:9px 12px;font-size:15px}
+.preview-block{padding:10px 12px;border-top:1px solid #e3e8ed}
+.preview-block h4{margin:0 0 7px;color:#174f33}
+.preview-row{display:grid;grid-template-columns:48px 1fr 58px;gap:8px;padding:5px 0;border-bottom:1px solid #eef1f4;font-size:13px}
+.preview-officials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.preview-officials div{background:#f5f7f9;border:1px solid #dde3e9;border-radius:10px;padding:10px}
+.preview-officials small{display:block;color:#667085;font-weight:700}.preview-officials strong{display:block;margin-top:4px}
+
+.class-wrap{overflow:auto}
+.class-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.class-table th{background:#174f33;color:#fff;padding:9px 7px;text-align:center}
+.class-table td{padding:9px 7px;border-bottom:1px solid #e2e8ee;text-align:center;background:#fff}
+.class-table td.team{text-align:left;font-weight:700;min-width:180px}
+.class-table tr:nth-child(even) td{background:#f8fafb}
+.class-logo{width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:8px;border-radius:6px;background:#fff}
+.class-pos{font-weight:900}
+.class-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.class-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.rank-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.rank-table th{background:#174f33;color:#fff;padding:9px 7px;text-align:center}
+.rank-table td{padding:9px 7px;border-bottom:1px solid #e2e8ee;text-align:center;background:#fff}
+.rank-table td.name{text-align:left;font-weight:700}
+.rank-table tr:nth-child(even) td{background:#f8fafb}
+.rank-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:980px){.preview-meta{grid-template-columns:1fr 1fr}.preview-columns,.preview-officials{grid-template-columns:1fr}{.sumula-meta{grid-template-columns:1fr}{.sumula-grid{grid-template-columns:1fr}{.nav{grid-template-columns:repeat(4,1fr)}.grid,.grid3,.stats,.row,.filters{grid-template-columns:1fr}}
+}
+}
+}
+</style>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head>
+<body>
+<header>
+ <h1>Gestor de Campeonatos</h1>
+ <p>V0.14 PWA — funcionamento offline e instalação no dispositivo</p>
+</header>
+
+<div class="app">
+ <div class="nav">
+  <button class="active" data-section="dashboard">Dashboard</button>
+  <button data-section="campeonato">Campeonato</button>
+  <button data-section="escolinhas">Escolinhas</button>
+  <button data-section="times">Times</button>
+  <button data-section="inscricoes">Inscrições</button>
+  <button data-section="atletas">Atletas</button>
+  <button data-section="locais">Locais</button>
+  <button data-section="jogos">Jogos</button>
+  <button data-section="artilharia">Artilharia</button>
+  <button data-section="disciplina">Disciplina</button>
+  <button data-section="classificacao">Classificação</button>
+  <button data-section="sumula">Súmula</button>
+ </div>
+
+ <section id="dashboard" class="section active">
+  <div class="stats">
+   <div class="stat"><strong id="stEscolinhas">0</strong><span>Escolinhas / clubes</span></div>
+   <div class="stat"><strong id="stTimes">0</strong><span>Times participantes</span></div>
+   <div class="stat"><strong id="stPendentes">0</strong><span>Inscrições pendentes</span></div>
+   <div class="stat"><strong id="stAtletas">0</strong><span>Atletas oficiais</span></div>
+   <div class="stat"><strong id="stJogos">0</strong><span>Jogos</span></div>
+   <div class="stat"><strong id="stEncerrados">0</strong><span>Encerrados</span></div>
+  </div>
+  <div class="card" style="margin-top:15px">
+   <h2 id="dashNome">Nenhum campeonato cadastrado</h2>
+   <p id="dashInfo">Cadastre o campeonato para começar.</p>
+   <div id="dashCategorias" class="chips"></div>
+  </div>
+  <div class="card" style="margin-top:15px">
+   <h3>Backup dos dados</h3>
+   <p class="empty">Antes de usar em rodada real, exporte um backup. O arquivo pode ser restaurado neste ou em outro navegador.</p>
+   <div class="backupbox">
+    <button class="btn secondary" onclick="exportarBackup()">Exportar backup</button>
+    <input id="arquivoBackup" type="file" accept=".json">
+    <button class="btn light" onclick="restaurarBackup()">Restaurar backup</button>
+   </div>
+  </div>
+ </section>
+
+ <section id="campeonato" class="section">
+  <div class="card">
+   <h2>Cadastro do Campeonato</h2>
+   <label>Nome</label><input id="campNome" placeholder="Copa CAP 2026">
+   <div class="row"><div><label>Início</label><input id="campInicio" type="date"></div><div><label>Término</label><input id="campFim" type="date"></div></div>
+   <div class="row"><div><label>Formato</label><select id="campFormato"><option>Pontos corridos</option><option>Grupos + Mata-mata</option><option>Mata-mata</option><option>Festival</option></select></div><div><label>Pontos por vitória</label><input id="campPontosVitoria" type="number" value="3"></div></div>
+   <hr>
+   <h3>Categorias</h3>
+   <div class="cat-row"><input id="novaCategoria" placeholder="Ex.: Sub-8"><button class="btn secondary" style="margin-top:0" onclick="adicionarCategoria()">Adicionar</button></div>
+   <div id="campCategorias" class="chips"></div>
+   <button class="btn primary" onclick="salvarCampeonato()">Salvar campeonato</button>
+  </div>
+ </section>
+
+ <section id="escolinhas" class="section">
+  <div class="grid">
+   <div class="card">
+    <h2>Nova Escolinha / Clube</h2>
+    <div class="notice">Aqui ficam os dados administrativos. A escolinha é cadastrada apenas uma vez, mesmo que tenha Time A e Time B.</div>
+    <label>Nome da escolinha / clube</label><input id="escNome">
+    <label>Treinador / Professor responsável</label><input id="escTreinador">
+    <label>WhatsApp administrativo</label><input id="escWhats">
+    <label>Instagram</label><input id="escInstagram" placeholder="@escolinha">
+    <label>Logo / Escudo da escolinha</label>
+    <input id="escLogo" type="file" accept="image/*" onchange="processarLogoEscolinha(this)">
+    <div id="escLogoPreview" class="logo-preview"><span class="empty">Sem logo</span></div>
+    <button id="btnSalvarEscolinha" class="btn primary" onclick="adicionarEscolinha()">Cadastrar escolinha</button>
+    <button id="btnCancelarEdicaoEscolinha" class="btn light" style="display:none" onclick="cancelarEdicaoEscolinha()">Cancelar edição</button>
+    <button class="btn danger" type="button" onclick="removerLogoEscolinha()">Remover escudo</button>
+   </div>
+   <div class="card"><h2>Escolinhas cadastradas</h2><div id="listaEscolinhas" class="list"></div></div>
+  </div>
+ </section>
+
+ <section id="times" class="section">
+  <div class="grid">
+   <div class="card">
+    <h2>Novo Time Participante</h2>
+    <div class="notice">Cada linha criada aqui será considerada uma equipe independente na futura tabela e classificação.</div>
+    <label>Categoria</label><select id="timeCategoria" onchange="sugerirNomeTime()"></select>
+    <label>Escolinha / clube</label><select id="timeEscolinha" onchange="sugerirNomeTime()"></select>
+    <label>Identificação</label>
+    <select id="timeIdentificacao" onchange="sugerirNomeTime()">
+      <option value="">Único time</option>
+      <option value="A">Time A</option>
+      <option value="B">Time B</option>
+      <option value="C">Time C</option>
+    </select>
+    <label>Nome que aparecerá na tabela</label><input id="timeNomeTabela" placeholder="Ex.: Atlético A">
+    <button class="btn primary" onclick="adicionarTime()">Adicionar time à categoria</button>
+   </div>
+   <div class="card">
+    <h2>Times participantes</h2>
+    <label>Filtrar por categoria</label><select id="timeFiltroCategoria" onchange="renderTimes()"></select>
+    <div id="listaTimes" class="list"></div>
+   </div>
+  </div>
+ </section>
+
+ <section id="inscricoes" class="section">
+  <div class="notice"><strong>Fluxo:</strong> planilha → categoria oficial → time participante → aprovação. Ex.: Sub-8 → Atlético A. Assim o atleta já entra no elenco correto.</div>
+  <div class="grid">
+   <div class="card">
+    <h2>Importar inscrições</h2>
+    <label>Planilha do Google Forms (.xlsx ou .csv)</label>
+    <input id="arquivoInscricoes" type="file" accept=".xlsx,.xls,.csv">
+    <button class="btn primary" onclick="importarArquivo()">Importar / Atualizar inscrições</button>
+    <div class="warning">A mesma planilha pode ser importada novamente; registros conhecidos não são duplicados.</div>
+    <hr>
+    <h3>Fontes online planejadas</h3>
+    <label>Planilha 1</label><input id="sheetUrl1" value="https://docs.google.com/spreadsheets/d/18GiUKw14R885i3q-JjMwygHQI8ucPdr3EClR51qbns0/edit?gid=1009128713">
+    <label>Planilha 2</label><input id="sheetUrl2" value="https://docs.google.com/spreadsheets/d/1xau1DHicRNYMMDuJl4Lq-1DCxsm8qOFAoCuSsFMYk8A/edit?gid=1804557183">
+    <button class="btn light" onclick="salvarFontes()">Salvar links</button>
+   </div>
+   <div class="card">
+    <h2>Resumo</h2>
+    <div class="grid3">
+      <div class="stat"><strong id="impTotal">0</strong><span>Total</span></div>
+      <div class="stat"><strong id="impNovas">0</strong><span>Novas</span></div>
+      <div class="stat"><strong id="impIgnoradas">0</strong><span>Já existentes</span></div>
+    </div>
+    <p id="impMensagem" class="empty">Nenhuma importação realizada nesta sessão.</p>
+   </div>
+  </div>
+  <div class="card" style="margin-top:15px">
+   <h2>Central de inscrições</h2>
+   <div class="filters">
+    <input id="fBusca" placeholder="Buscar atleta, responsável ou RG..." oninput="renderInscricoes()">
+    <select id="fStatus" onchange="renderInscricoes()"><option value="">Todos os status</option><option>Pendente</option><option>Aprovada</option><option>Recusada</option></select>
+    <select id="fCategoria" onchange="renderInscricoes()"><option value="">Todas as categorias</option></select>
+    <select id="fEscolinha" onchange="renderInscricoes()"><option value="">Todas as escolinhas</option></select>
+   </div>
+   <div id="listaInscricoes" class="list"></div>
+  </div>
+ </section>
+
+ <section id="atletas" class="section">
+  <div class="card">
+    <h2>Atletas oficiais</h2>
+    <div class="notice">Os atletas entram aqui após a aprovação na aba <strong>Inscrições</strong>. Esta área é dedicada à consulta, conferência dos elencos e relatórios.</div>
+    <div class="grid3">
+      <div><label>Categoria</label><select id="atlFiltroCategoria" onchange="atualizarFiltrosAtletas()"></select></div>
+      <div><label>Escolinha / Clube</label><select id="atlFiltroEscolinha" onchange="atualizarFiltrosAtletas()"></select></div>
+      <div><label>Time participante</label><select id="atlFiltroTime" onchange="renderAtletas()"></select></div>
+    </div>
+    <label>Buscar jogador</label><input id="atlBusca" placeholder="Digite o nome do atleta..." oninput="renderAtletas()">
+    <div class="report-actions">
+      <button class="btn secondary" onclick="gerarRelatorioPDF()">Gerar relação em PDF</button>
+      <button class="btn purple" onclick="gerarRelatorioImagem()">Gerar relação em imagem</button>
+    </div>
+    <p class="empty">O relatório não mostra RG, telefone ou dados do responsável.</p>
+    <div id="listaAtletas" class="list"></div>
+  </div>
+ </section>
+
+ <section id="locais" class="section">
+  <div class="grid">
+   <div class="card">
+    <h2>Novo Local</h2>
+    <div class="notice">Cadastre o campo/local uma única vez. Depois ele poderá ser selecionado nos jogos.</div>
+    <label>Nome do local</label><input id="localNome" placeholder="Ex.: Campo CAP">
+    <label>Endereço completo</label><input id="localEndereco" placeholder="Rua, número, bairro, cidade">
+    <label>Link do Google Maps</label><input id="localMaps" placeholder="https://maps.google.com/...">
+    <button class="btn primary" onclick="adicionarLocal()">Cadastrar local</button>
+   </div>
+   <div class="card"><h2>Locais cadastrados</h2><div id="listaLocais" class="list"></div></div>
+  </div>
+ </section>
+
+ <section id="jogos" class="section">
+  <div class="grid">
+   <div class="card">
+    <h2>Novo Jogo</h2>
+    <label>Categoria</label><select id="jogoCategoria" onchange="atualizarTimesJogo()"></select>
+    <div class="row"><div><label>Rodada</label><select id="jogoRodada"></select></div><div><label>Local / Campo</label><select id="jogoLocal"></select></div></div>
+    <div class="row"><div><label>Data</label><input id="jogoData" type="date"></div><div><label>Horário</label><input id="jogoHora" type="time"></div></div>
+    <div class="row"><div><label>Mandante</label><select id="jogoCasa"></select></div><div><label>Visitante</label><select id="jogoFora"></select></div></div>
+    <button class="btn primary" onclick="adicionarJogo()">Criar jogo</button>
+   </div>
+   <div class="card">
+    <h2>Jogos cadastrados</h2>
+    <div class="row">
+      <div><label>Filtrar por categoria</label><select id="jogoFiltroCategoria" onchange="renderJogos()"></select></div>
+      <div><label>Filtrar por rodada</label><select id="jogoFiltroRodada" onchange="renderJogos()"></select></div>
+    </div>
+    <div id="listaJogos" class="list"></div>
+<div class="share-box">
+  <h3>Divulgação da rodada</h3>
+  <div class="notice">Use os filtros de categoria e rodada para montar automaticamente a arte dos jogos.</div>
+  <div class="share-actions">
+    <button class="btn secondary" onclick="gerarJogosPDF()">Gerar jogos em PDF</button>
+    <button class="btn purple" onclick="gerarJogosImagem()">Gerar arte em PNG</button>
+  </div>
+  <hr>
+  <h3>Modo Mesário Offline</h3>
+  <div class="notice">Exporte uma partida para o celular do mesário. Depois do jogo, importe o retorno preenchido para atualizar placar, gols, cartões e responsáveis no sistema principal.</div>
+  <label>Partida para o mesário</label>
+  <select id="mesarioJogoSelect"></select>
+  <div class="share-actions">
+    <button class="btn primary" onclick="exportarPacoteMesario()">Exportar pacote da partida</button>
+    <input id="retornoMesarioFile" type="file" accept=".json">
+    <button class="btn light" onclick="importarRetornoMesario()">Importar retorno do mesário</button>
+  </div>
+</div>
+   </div>
+  </div>
+ </section>
+
+ <section id="artilharia" class="section">
+  <div class="card">
+    <div class="class-head">
+      <div>
+        <h2>Artilharia</h2>
+        <p class="empty">Ranking calculado automaticamente com base nos gols registrados nas súmulas.</p>
+      </div>
+      <div class="rank-actions">
+        <button class="btn secondary" onclick="gerarArtilhariaPDF()">Gerar artilharia em PDF</button>
+        <button class="btn purple" onclick="gerarArtilhariaImagem()">Gerar artilharia em PNG</button>
+      </div>
+    </div>
+    <label>Categoria</label><select id="artFiltroCategoria" onchange="renderArtilharia()"></select>
+    <div id="artilhariaArea"></div>
+  </div>
+ </section>
+
+ <section id="disciplina" class="section">
+  <div class="card">
+    <div class="class-head">
+      <div>
+        <h2>Disciplina</h2>
+        <p class="empty">Cartões amarelos e vermelhos acumulados automaticamente pelas súmulas.</p>
+      </div>
+      <div class="rank-actions">
+        <button class="btn secondary" onclick="gerarDisciplinaPDF()">Gerar disciplina em PDF</button>
+        <button class="btn purple" onclick="gerarDisciplinaImagem()">Gerar disciplina em PNG</button>
+      </div>
+    </div>
+    <label>Categoria</label><select id="discFiltroCategoria" onchange="renderDisciplina()"></select>
+    <div id="disciplinaArea"></div>
+  </div>
+ </section>
+
+ <section id="classificacao" class="section">
+  <div class="card">
+    <div class="class-head">
+      <div>
+        <h2>Classificação</h2>
+        <p class="empty">A tabela é calculada automaticamente com base nos jogos encerrados.</p>
+      </div>
+      <div class="class-actions">
+        <button class="btn secondary" onclick="gerarClassificacaoPDF()">Gerar classificação em PDF</button>
+        <button class="btn purple" onclick="gerarClassificacaoImagem()">Gerar classificação em PNG</button>
+      </div>
+    </div>
+    <div class="row">
+      <div><label>Categoria</label><select id="classFiltroCategoria" onchange="renderClassificacao()"></select></div>
+      <div><label>Critério de desempate</label>
+        <select id="classDesempate" onchange="renderClassificacao()">
+          <option value="saldo">Pontos → Vitórias → Saldo de gols → Gols pró</option>
+          <option value="gols">Pontos → Vitórias → Gols pró → Saldo de gols</option>
+        </select>
+      </div>
+    </div>
+    <div id="classResumo" class="notice" style="margin-top:12px"></div>
+    <div class="class-wrap"><div id="classificacaoArea"></div></div>
+  </div>
+ </section>
+
+ <section id="sumula" class="section">
+  <div class="card">
+    <h2>Súmula Digital</h2>
+    <label>Selecionar jogo</label><select id="sumulaJogo" onchange="carregarSumula()"></select>
+    <div id="sumulaArea" style="margin-top:12px"><p>Selecione um jogo.</p></div>
+  </div>
+ </section>
+
+ <p class="footer">V0.14 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+</div>
+
+<script>
+const KEY="gestorCampeonatosV01";
+let db=JSON.parse(localStorage.getItem(KEY))||{};
+db.campeonato=db.campeonato||null;
+db.inscricoes=db.inscricoes||[];
+db.atletas=db.atletas||[];
+db.jogos=db.jogos||[];
+db.fontes=db.fontes||{};
+db.escolinhas=db.escolinhas||[];
+db.escolinhas.forEach(e=>{if(e.logo===undefined)e.logo=''});
+db.times=db.times||[];
+db.locais=db.locais||[];
+let categoriasEdicao=[];
+let ultimaImportacao={novas:0,ignoradas:0};
+let logoEscolinhaTemp='';
+let escolinhaEditandoId='';
+let cronometroInterval=null;
+
+const $=id=>document.getElementById(id);
+function uid(){return (crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random())}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()}
+function uniq(a){return [...new Set((a||[]).filter(Boolean))]}
+function salvarSemRender(){localStorage.setItem(KEY,JSON.stringify(db))}
+function save(){salvarSemRender();renderTudo()}
+
+function migrarDados(){
+ if(db.campeonato && !Array.isArray(db.campeonato.categorias)){
+   db.campeonato.categorias=db.campeonato.categoria?[db.campeonato.categoria]:[];
+   delete db.campeonato.categoria;
+ }
+ // Migração da V0.3: "equipes" eram na prática escolinhas.
+ if(Array.isArray(db.equipes) && db.equipes.length && !db._migradoV04){
+   const mapEq={};
+   db.equipes.forEach(e=>{
+     const escId=uid();
+     db.escolinhas.push({id:escId,nome:e.nome,treinador:e.treinador||"",whatsapp:e.whatsapp||"",instagram:e.instagram||""});
+     mapEq[e.id]=escId;
+     const cats=Array.isArray(e.categorias)?e.categorias:(e.categoria?[e.categoria]:[]);
+     cats.forEach(cat=>{
+       db.times.push({id:uid(),escolinhaId:escId,categoria:cat,identificacao:"",nomeTabela:e.nome});
+     });
+   });
+   // Vincula atletas e jogos ao time padrão criado para a categoria.
+   db.atletas.forEach(a=>{
+     const escId=mapEq[a.equipeId];
+     if(escId){
+       const t=db.times.find(x=>x.escolinhaId===escId && x.categoria===a.categoria);
+       if(t)a.timeId=t.id;
+     }
+   });
+   db.jogos.forEach(j=>{
+     const casaEsc=mapEq[j.casaId],foraEsc=mapEq[j.foraId];
+     const tc=db.times.find(x=>x.escolinhaId===casaEsc&&x.categoria===j.categoria);
+     const tf=db.times.find(x=>x.escolinhaId===foraEsc&&x.categoria===j.categoria);
+     if(tc)j.casaTimeId=tc.id;if(tf)j.foraTimeId=tf.id;
+   });
+   db.inscricoes.forEach(i=>{
+     const escId=mapEq[i.equipeId];
+     if(escId){
+       const cat=i.categoriaOficial||i.categoria;
+       const t=db.times.find(x=>x.escolinhaId===escId&&x.categoria===cat);
+       if(t)i.timeId=t.id;
+     }
+   });
+   db._migradoV04=true;
+ }
+ categoriasEdicao=[...(db.campeonato?.categorias||[])];
+ localStorage.setItem(KEY,JSON.stringify(db));
+}
+migrarDados();
+
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+ document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));
+ b.classList.add("active");$(b.dataset.section).classList.add("active")
+});
+
+function categoriasCampeonato(){return db.campeonato?.categorias||[]}
+function preencherSelectCategorias(id,todos=false){
+ const el=$(id);if(!el)return;const atual=el.value;
+ el.innerHTML=(todos?'<option value="">Todas as categorias</option>':'<option value="">Selecione...</option>')+
+ categoriasCampeonato().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+ if([...el.options].some(o=>o.value===atual))el.value=atual
+}
+function adicionarCategoria(){
+ const v=$("novaCategoria").value.trim();if(!v)return;
+ if(!categoriasEdicao.some(c=>norm(c)===norm(v)))categoriasEdicao.push(v);
+ $("novaCategoria").value="";renderCategoriasCampeonato()
+}
+function removerCategoria(cat){
+ if(db.times.some(t=>t.categoria===cat)||db.atletas.some(a=>a.categoria===cat)||db.jogos.some(j=>j.categoria===cat))
+   return alert("A categoria já possui times, atletas ou jogos.");
+ categoriasEdicao=categoriasEdicao.filter(c=>c!==cat);renderCategoriasCampeonato()
+}
+function renderCategoriasCampeonato(){
+ $("campCategorias").innerHTML=categoriasEdicao.length?categoriasEdicao.map(c=>`<span class="chip">${esc(c)} <button onclick="removerCategoria('${esc(c)}')">×</button></span>`).join(""):"<span class='empty'>Nenhuma categoria.</span>"
+}
+function salvarCampeonato(){
+ if(!$("campNome").value.trim())return alert("Informe o nome.");
+ if(!categoriasEdicao.length)return alert("Adicione ao menos uma categoria.");
+ db.campeonato={nome:$("campNome").value.trim(),inicio:$("campInicio").value,fim:$("campFim").value,formato:$("campFormato").value,pontosVitoria:+$("campPontosVitoria").value||3,categorias:uniq(categoriasEdicao)};
+ save();alert("Campeonato salvo.")
+}
+
+function processarLogoEscolinha(input){
+ const f=input.files?.[0];if(!f){logoEscolinhaTemp='';$("escLogoPreview").innerHTML='<span class="empty">Sem logo</span>';return}
+ const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const m=320,k=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));c.getContext('2d').drawImage(img,0,0,c.width,c.height);logoEscolinhaTemp=c.toDataURL('image/png');$("escLogoPreview").innerHTML=`<img src="${logoEscolinhaTemp}" alt="Logo">`};img.src=e.target.result};r.readAsDataURL(f)
+}
+function limparFormularioEscolinha(){
+ escolinhaEditandoId='';
+ ["escNome","escTreinador","escWhats","escInstagram"].forEach(i=>$(i).value="");
+ $("escLogo").value='';
+ logoEscolinhaTemp='';
+ $("escLogoPreview").innerHTML='<span class="empty">Sem logo</span>';
+ if($("btnSalvarEscolinha"))$("btnSalvarEscolinha").textContent="Cadastrar escolinha";
+ if($("btnCancelarEdicaoEscolinha"))$("btnCancelarEdicaoEscolinha").style.display="none";
+}
+function editarEscolinha(id){
+ const e=db.escolinhas.find(x=>x.id===id);if(!e)return;
+ escolinhaEditandoId=id;
+ $("escNome").value=e.nome||'';
+ $("escTreinador").value=e.treinador||'';
+ $("escWhats").value=e.whatsapp||'';
+ $("escInstagram").value=e.instagram||'';
+ logoEscolinhaTemp=e.logo||'';
+ $("escLogo").value='';
+ $("escLogoPreview").innerHTML=e.logo?`<img src="${e.logo}" alt="Logo">`:'<span class="empty">Sem logo</span>';
+ $("btnSalvarEscolinha").textContent="Salvar alterações";
+ $("btnCancelarEdicaoEscolinha").style.display="inline-block";
+ document.querySelector('[data-section="escolinhas"]').click();
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function cancelarEdicaoEscolinha(){limparFormularioEscolinha()}
+function removerLogoEscolinha(){
+ logoEscolinhaTemp='';
+ $("escLogo").value='';
+ $("escLogoPreview").innerHTML='<span class="empty">Sem logo</span>';
+}
+function adicionarEscolinha(){
+ const nome=$("escNome").value.trim();if(!nome)return alert("Informe o nome.");
+ if(db.escolinhas.some(e=>norm(e.nome)===norm(nome)&&e.id!==escolinhaEditandoId))return alert("Essa escolinha já está cadastrada.");
+ if(escolinhaEditandoId){
+   const e=db.escolinhas.find(x=>x.id===escolinhaEditandoId);if(!e)return;
+   e.nome=nome;e.treinador=$("escTreinador").value.trim();e.whatsapp=$("escWhats").value.trim();e.instagram=$("escInstagram").value.trim();e.logo=logoEscolinhaTemp||'';
+   salvarSemRender();limparFormularioEscolinha();renderTudo();alert("Escolinha atualizada.");
+ }else{
+   db.escolinhas.push({id:uid(),nome,treinador:$("escTreinador").value.trim(),whatsapp:$("escWhats").value.trim(),instagram:$("escInstagram").value.trim(),logo:logoEscolinhaTemp||''});
+   salvarSemRender();limparFormularioEscolinha();renderTudo();
+ }
+}
+function excluirEscolinha(id){
+ if(db.times.some(t=>t.escolinhaId===id))return alert("Primeiro exclua os times participantes vinculados a esta escolinha.");
+ if(confirm("Excluir esta escolinha?")){db.escolinhas=db.escolinhas.filter(e=>e.id!==id);save()}
+}
+function escolinhaNome(id){return db.escolinhas.find(e=>e.id===id)?.nome||"Escolinha não definida"}
+
+function sugerirNomeTime(){
+ const escId=$("timeEscolinha").value,ident=$("timeIdentificacao").value;
+ const nome=escolinhaNome(escId);
+ $("timeNomeTabela").value=escId?(ident?`${nome} ${ident}`:nome):""
+}
+function adicionarTime(){
+ const categoria=$("timeCategoria").value,escolinhaId=$("timeEscolinha").value,identificacao=$("timeIdentificacao").value,nomeTabela=$("timeNomeTabela").value.trim();
+ if(!categoria||!escolinhaId||!nomeTabela)return alert("Informe categoria, escolinha e nome do time.");
+ if(db.times.some(t=>t.categoria===categoria&&norm(t.nomeTabela)===norm(nomeTabela)))return alert("Já existe um time com esse nome nesta categoria.");
+ if(db.times.some(t=>t.categoria===categoria&&t.escolinhaId===escolinhaId&&t.identificacao===identificacao))return alert("Essa participação já existe.");
+ db.times.push({id:uid(),escolinhaId,categoria,identificacao,nomeTabela});save()
+}
+function excluirTime(id){
+ if(db.atletas.some(a=>a.timeId===id)||db.jogos.some(j=>j.casaTimeId===id||j.foraTimeId===id))return alert("Esse time já possui atletas ou jogos vinculados.");
+ if(confirm("Excluir este time participante?")){db.times=db.times.filter(t=>t.id!==id);save()}
+}
+function timeNome(id){return db.times.find(t=>t.id===id)?.nomeTabela||"Time não definido"}
+function timesDaCategoria(cat){return db.times.filter(t=>t.categoria===cat)}
+function renderTimes(){
+ const filtro=$("timeFiltroCategoria")?.value||"";
+ const arr=db.times.filter(t=>!filtro||t.categoria===filtro);
+ $("listaTimes").innerHTML=arr.length?arr.map(t=>`<div class="item"><strong>${esc(t.nomeTabela)}</strong><small><span class="catbadge">${esc(t.categoria)}</span> <span class="teamtag">${esc(escolinhaNome(t.escolinhaId))}</span>${t.identificacao?` | Identificação: ${esc(t.identificacao)}`:" | Time único"}</small><div class="actions"><button class="danger" onclick="excluirTime('${t.id}')">Excluir</button></div></div>`).join(""):"<p class='empty'>Nenhum time participante nesta categoria.</p>"
+}
+
+function atualizarFiltrosAtletas(){
+ const cat=$("atlFiltroCategoria")?.value||"",escAtual=$("atlFiltroEscolinha")?.value||"";
+ $("atlFiltroEscolinha").innerHTML='<option value="">Todas as escolinhas</option>'+db.escolinhas.map(e=>`<option value="${e.id}">${esc(e.nome)}</option>`).join('');
+ if([...$("atlFiltroEscolinha").options].some(o=>o.value===escAtual))$("atlFiltroEscolinha").value=escAtual;
+ const escId=$("atlFiltroEscolinha").value,timeAtual=$("atlFiltroTime")?.value||"";
+ const ts=db.times.filter(t=>(!cat||t.categoria===cat)&&(!escId||t.escolinhaId===escId));
+ $("atlFiltroTime").innerHTML='<option value="">Todos os times</option>'+ts.map(t=>`<option value="${t.id}">${esc(t.nomeTabela)}</option>`).join('');
+ if([...$("atlFiltroTime").options].some(o=>o.value===timeAtual))$("atlFiltroTime").value=timeAtual;
+ renderAtletas()
+}
+function excluirAtleta(id){if(confirm("Excluir este atleta do elenco oficial?")){db.atletas=db.atletas.filter(a=>a.id!==id);save()}}
+function atletasFiltrados(){
+ const cat=$("atlFiltroCategoria")?.value||"",escId=$("atlFiltroEscolinha")?.value||"",timeId=$("atlFiltroTime")?.value||"",busca=norm($("atlBusca")?.value||"");
+ return db.atletas.filter(a=>{const t=db.times.find(x=>x.id===a.timeId);return (!cat||a.categoria===cat)&&(!escId||t?.escolinhaId===escId)&&(!timeId||a.timeId===timeId)&&(!busca||norm(a.nome).includes(busca))}).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"))
+}
+function renderAtletas(){
+ const arr=atletasFiltrados();
+ $("listaAtletas").innerHTML=arr.length?arr.map(a=>{const t=db.times.find(x=>x.id===a.timeId),e=db.escolinhas.find(x=>x.id===t?.escolinhaId);return `<div class="item"><div class="item-flex">${e?.logo?`<img class="logo-mini" src="${e.logo}" alt="">`:''}<div><strong>${esc(a.nome)}</strong><small><span class="catbadge">${esc(a.categoria||'')}</span> <span class="teamtag">${esc(timeNome(a.timeId))}</span> | ${esc(e?.nome||'-')} | Nasc.: ${esc(dataBR(a.nascimento))}</small></div></div><div class="actions"><button class="danger" onclick="excluirAtleta('${a.id}')">Excluir</button></div></div>`}).join(''):"<p class='empty'>Nenhum atleta encontrado.</p>"
+}
+function dataBR(v){if(!v)return '-';const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:v}
+function ordemCategoria(cat){
+ const s=norm(cat||"");
+ const m=s.match(/sub\D*(\d+)/);
+ return m?Number(m[1]):999;
+}
+function ordenarAtletasPorCategoria(arr){
+ return arr.slice().sort((a,b)=>ordemCategoria(a.categoria)-ordemCategoria(b.categoria)||String(a.categoria||"").localeCompare(String(b.categoria||""),"pt-BR")||a.nome.localeCompare(b.nome,"pt-BR"));
+}
+function contextoRelatorio(){const cat=$("atlFiltroCategoria")?.value||"Todas as categorias",escId=$("atlFiltroEscolinha")?.value||"",timeId=$("atlFiltroTime")?.value||"",t=db.times.find(x=>x.id===timeId),e=db.escolinhas.find(x=>x.id===(escId||t?.escolinhaId));return {cat,escolinha:e,time:t,atletas:ordenarAtletasPorCategoria(atletasFiltrados())}}
+function gerarRelatorioPDF(){
+ const c=contextoRelatorio();if(!c.atletas.length)return alert("Não há atletas para gerar o relatório.");
+ if(!window.jspdf?.jsPDF)return imprimirRelatorio();
+ const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),m=14;let y=18,x=m;
+ try{if(c.escolinha?.logo){d.addImage(c.escolinha.logo,'PNG',m,10,22,22);x=40}}catch(e){}
+ d.setFontSize(16);d.text(db.campeonato?.nome||'Campeonato',x,18);d.setFontSize(11);d.text('Relação de atletas inscritos',x,26);y=43;
+ d.setFontSize(10);d.text(`Categoria: ${c.cat}`,m,y);y+=6;d.text(`Escolinha: ${c.escolinha?.nome||'Todas'}`,m,y);y+=6;d.text(`Time: ${c.time?.nomeTabela||'Todos'}`,m,y);y+=9;
+ c.atletas.forEach((a,i)=>{if(y>282){d.addPage();y=18}d.text(`${i+1}. ${a.nome} | ${dataBR(a.nascimento)} | ${a.categoria} | ${timeNome(a.timeId)}`,m,y);y+=6});
+ y+=3;d.setFont(undefined,'bold');d.text(`Total de inscritos: ${c.atletas.length}`,m,y);
+ d.save('relacao-atletas.pdf')
+}
+function imprimirRelatorio(){
+ const c=contextoRelatorio(),w=window.open('','_blank');w.document.write(`<html><head><title>Relação de atletas</title><style>body{font-family:Arial;padding:25px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ccc;padding:7px;text-align:left}img{max-width:80px;max-height:80px}</style></head><body>${c.escolinha?.logo?`<img src="${c.escolinha.logo}">`:''}<h2>${esc(db.campeonato?.nome||'Campeonato')}</h2><h3>Relação de atletas inscritos</h3><p>Categoria: ${esc(c.cat)}<br>Escolinha: ${esc(c.escolinha?.nome||'Todas')}<br>Time: ${esc(c.time?.nomeTabela||'Todos')}</p><table><tr><th>Nº</th><th>Atleta</th><th>Nascimento</th><th>Categoria</th><th>Time</th></tr>${c.atletas.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.nome)}</td><td>${esc(dataBR(a.nascimento))}</td><td>${esc(a.categoria)}</td><td>${esc(timeNome(a.timeId))}</td></tr>`).join('')}</table><p><b>Total: ${c.atletas.length}</b></p><script>window.onload=()=>window.print()<\/script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
+  });
+}
+</script>
+</body></html>`);w.document.close()
+}
+async function gerarRelatorioImagem(){
+ const c=contextoRelatorio();if(!c.atletas.length)return alert("Não há atletas para gerar o relatório.");
+ const W=1200,row=46,H=240+c.atletas.length*row+80,cv=document.createElement('canvas'),g=cv.getContext('2d');cv.width=W;cv.height=H;g.fillStyle='#fff';g.fillRect(0,0,W,H);g.fillStyle='#17212b';
+ let tx=55;if(c.escolinha?.logo){try{const im=await new Promise((res,rej)=>{const x=new Image();x.onload=()=>res(x);x.onerror=rej;x.src=c.escolinha.logo});g.drawImage(im,55,35,105,105);tx=185}catch(e){}}
+ g.font='bold 34px Arial';g.fillText(db.campeonato?.nome||'Campeonato',tx,72);g.font='24px Arial';g.fillText('Relação de atletas inscritos',tx,112);g.font='18px Arial';g.fillText(`Categoria: ${c.cat}`,55,165);g.fillText(`Escolinha: ${c.escolinha?.nome||'Todas'}`,55,192);g.fillText(`Time: ${c.time?.nomeTabela||'Todos'}`,55,219);
+ let y=258;g.font='17px Arial';c.atletas.forEach((a,i)=>{g.fillStyle='#17212b';g.fillText(`${i+1}. ${a.nome}`,60,y);g.fillText(dataBR(a.nascimento),690,y);g.fillText(a.categoria,850,y);g.fillText(timeNome(a.timeId).slice(0,22),980,y);g.strokeStyle='#d8dee5';g.beginPath();g.moveTo(50,y+13);g.lineTo(1150,y+13);g.stroke();y+=row});
+ g.font='bold 18px Arial';g.fillText(`Total de inscritos: ${c.atletas.length}`,55,y+25);const a=document.createElement('a');a.download='relacao-atletas.png';a.href=cv.toDataURL('image/png');a.click()
+}
+
+
+function rodadasDisponiveis(){
+ return ["1ª Rodada","2ª Rodada","3ª Rodada","4ª Rodada","5ª Rodada","6ª Rodada","7ª Rodada","8ª Rodada","9ª Rodada","10ª Rodada","Semifinal","Final"];
+}
+function preencherRodadas(){
+ const a=$("jogoRodada")?.value||"",b=$("jogoFiltroRodada")?.value||"";
+ const ops=rodadasDisponiveis().map(r=>`<option value="${r}">${r}</option>`).join("");
+ if($("jogoRodada")){$("jogoRodada").innerHTML='<option value="">Selecione...</option>'+ops;if([...$("jogoRodada").options].some(o=>o.value===a))$("jogoRodada").value=a}
+ if($("jogoFiltroRodada")){$("jogoFiltroRodada").innerHTML='<option value="">Todas as rodadas</option>'+ops;if([...$("jogoFiltroRodada").options].some(o=>o.value===b))$("jogoFiltroRodada").value=b}
+}
+function adicionarLocal(){
+ const nome=$("localNome").value.trim();if(!nome)return alert("Informe o nome do local.");
+ db.locais.push({id:uid(),nome,endereco:$("localEndereco").value.trim(),maps:$("localMaps").value.trim()});
+ ["localNome","localEndereco","localMaps"].forEach(i=>$(i).value="");save()
+}
+function excluirLocal(id){
+ if(db.jogos.some(j=>j.localId===id))return alert("Esse local já está vinculado a um jogo.");
+ if(confirm("Excluir este local?")){db.locais=db.locais.filter(l=>l.id!==id);save()}
+}
+function localInfoJogo(j){
+ return db.locais.find(l=>l.id===j.localId)||{nome:j.local||"",endereco:"",maps:""}
+}
+function preencherLocais(){
+ const atual=$("jogoLocal")?.value||"";
+ if($("jogoLocal")){$("jogoLocal").innerHTML='<option value="">Selecione...</option>'+db.locais.map(l=>`<option value="${l.id}">${esc(l.nome)}</option>`).join("");if([...$("jogoLocal").options].some(o=>o.value===atual))$("jogoLocal").value=atual}
+}
+
+function atualizarTimesJogo(){
+ const cat=$("jogoCategoria").value;
+ const opts='<option value="">Selecione...</option>'+timesDaCategoria(cat).map(t=>`<option value="${t.id}">${esc(t.nomeTabela)}</option>`).join("");
+ $("jogoCasa").innerHTML=opts;$("jogoFora").innerHTML=opts
+}
+function adicionarJogo(){
+ const cat=$("jogoCategoria").value,casa=$("jogoCasa").value,fora=$("jogoFora").value;
+ if(!cat)return alert("Selecione a categoria.");
+ if(!casa||!fora||casa===fora)return alert("Selecione times diferentes.");
+ const tc=db.times.find(t=>t.id===casa),tf=db.times.find(t=>t.id===fora);
+ if(!tc||!tf||tc.categoria!==cat||tf.categoria!==cat)return alert("Os times precisam pertencer à categoria selecionada.");
+ db.jogos.push({id:uid(),categoria:cat,rodada:$("jogoRodada").value,localId:$("jogoLocal").value,data:$("jogoData").value,hora:$("jogoHora").value,casaTimeId:casa,foraTimeId:fora,status:"Agendado",placarCasa:0,placarFora:0,gols:[],cartoes:[],observacoes:"",numeracaoAtletas:{}});
+ ["jogoRodada","jogoLocal","jogoData","jogoHora"].forEach(i=>$(i).value="");save()
+}
+function excluirJogo(id){
+ if(!confirm("Excluir este jogo e todos os registros da súmula vinculada?"))return;
+ const selecionado=$("sumulaJogo")?.value===id;
+ db.jogos=db.jogos.filter(j=>j.id!==id);
+ salvarSemRender();
+ renderTudo();
+ if(selecionado){
+   if($("sumulaJogo"))$("sumulaJogo").value="";
+   if($("sumulaArea"))$("sumulaArea").innerHTML="<p>Selecione um jogo.</p>";
+ }
+}
+
+function jogoEscolinhaLogo(timeId){
+ const t=db.times.find(x=>x.id===timeId),e=db.escolinhas.find(x=>x.id===t?.escolinhaId);return e?.logo||''
+}
+function jogosFiltradosParaDivulgacao(){
+ const cat=$("jogoFiltroCategoria")?.value||"",rod=norm($("jogoFiltroRodada")?.value||"");
+ return db.jogos.filter(j=>(!cat||j.categoria===cat)&&(!rod||norm(j.rodada||"")===rod))
+ .sort((a,b)=>String(a.data||"").localeCompare(String(b.data||""))||String(a.hora||"").localeCompare(String(b.hora||"")))
+}
+function contextoJogosDivulgacao(){
+ const jogos=jogosFiltradosParaDivulgacao();
+ const cats=[...new Set(jogos.map(j=>j.categoria).filter(Boolean))];
+ const rods=[...new Set(jogos.map(j=>j.rodada).filter(Boolean))];
+ const catSelecionada=$("jogoFiltroCategoria")?.value||"";
+ const rodSelecionada=$("jogoFiltroRodada")?.value||"";
+ const cat=catSelecionada || (cats.length===1?cats[0]:"Todas as categorias");
+ const rod=rodSelecionada || (rods.length===1?rods[0]:"Todas as rodadas");
+ return {jogos,cat,rod}
+}
+function periodoJogos(arr){
+ const ds=[...new Set(arr.map(j=>j.data).filter(Boolean))].sort(),ms=["JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO","JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"];
+ if(!ds.length)return ""; const cv=d=>{const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?{a:+m[1],m:+m[2],d:+m[3]}:null},a=cv(ds[0]),b=cv(ds.at(-1));if(!a||!b)return "";
+ if(ds.length===1)return `${a.d} DE ${ms[a.m-1]} DE ${a.a}`;
+ if(a.a===b.a&&a.m===b.m)return `${a.d} E ${b.d} DE ${ms[a.m-1]} DE ${a.a}`;
+ return `${dataBR(ds[0])} A ${dataBR(ds.at(-1))}`;
+}
+function cabecalhoCategoria(c){return c.cat==="Todas as categorias"?"":`CATEGORIA: ${String(c.cat).toUpperCase()}`}
+
+function placarOuX(j){return j.status==="Encerrado"?`${j.placarCasa} x ${j.placarFora}`:"X"}
+function carregarImagem(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
+async function gerarQRCodeDataURL(texto){
+ if(!texto)return "";
+ if(!window.QRCode?.toDataURL)return "";
+ try{return await QRCode.toDataURL(texto,{width:180,margin:1,errorCorrectionLevel:"M"})}catch(e){return ""}
+}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function gerarJogosPDF(){
+ const c=contextoJogosDivulgacao();if(!c.jogos.length)return alert("Nenhum jogo encontrado com os filtros atuais.");
+ if(!window.jspdf?.jsPDF)return alert("Gerador de PDF indisponível neste navegador.");
+ const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'});let y=58;
+
+ d.setFillColor(24,33,43);d.rect(0,0,210,46,'F');
+ d.setTextColor(255,255,255);d.setFont(undefined,'bold');d.setFontSize(18);
+ d.text(db.campeonato?.nome||'Campeonato',14,13);
+ d.setFontSize(15);d.text(`TABELA DE JOGOS — ${c.rod.toUpperCase()}`,14,25);
+ d.setFontSize(11);d.text(`CATEGORIA: ${c.cat.toUpperCase()}`,14,35);
+
+ d.setTextColor(23,33,43);
+
+ c.jogos.forEach(j=>{
+   if(y>260){d.addPage();y=28}
+
+   // Card
+   d.setFillColor(255,255,255);
+   d.setDrawColor(210,216,222);
+   d.roundedRect(14,y-8,182,37,3,3,'FD');
+
+   // Teams / score
+   d.setFont(undefined,'bold');d.setFontSize(10.5);
+   d.text(timeNome(j.casaTimeId),34,y+2);
+   d.setFontSize(13);d.text(placarOuX(j),105,y+2,{align:'center'});
+   d.setFontSize(10.5);d.text(timeNome(j.foraTimeId),176,y+2,{align:'right'});
+
+   // Highlighted match info bar
+   d.setFillColor(239,243,247);
+   d.roundedRect(22,y+8,166,11,2,2,'F');
+   d.setFont(undefined,'bold');d.setFontSize(8.5);
+   d.setTextColor(23,33,43);
+   const dataTxt=dataBR(j.data)||'Sem data';
+   const horaTxt=j.hora||'Sem horário';
+   const catTxt=j.categoria||'Sem categoria';
+   d.text(`DATA: ${dataTxt}`,31,y+15);
+   d.text(`HORÁRIO: ${horaTxt}`,83,y+15);
+   d.text(`CATEGORIA: ${catTxt}`,137,y+15);
+
+   const li=localInfoJogo(j);
+   d.setFont(undefined,'normal');d.setFontSize(7.5);d.setTextColor(88,96,105);
+   d.text(`${j.rodada||'Sem rodada'} • ${li.nome||'Local não informado'}`,105,y+25,{align:'center'});
+   if(li.maps){
+     d.setTextColor(37,99,235);
+     d.textWithLink('Ver localização',105,y+29,{url:li.maps,align:'center'});
+   }
+
+   d.setTextColor(23,33,43);
+   try{const a=jogoEscolinhaLogo(j.casaTimeId);if(a)d.addImage(a,'PNG',17,y-3,12,12)}catch(e){}
+   try{const b=jogoEscolinhaLogo(j.foraTimeId);if(b)d.addImage(b,'PNG',181,y-3,12,12)}catch(e){}
+   y+=45;
+ });
+ d.save(`jogos-${c.rod.replace(/\\s+/g,'-').toLowerCase()}-${c.cat.replace(/\\s+/g,'-').toLowerCase()}.pdf`)
+}
+async function gerarJogosImagem(){
+ const c=contextoJogosDivulgacao();if(!c.jogos.length)return alert("Nenhum jogo encontrado com os filtros atuais.");
+ const periodo=periodoJogos(c.jogos),catHead=cabecalhoCategoria(c);const W=1080,card=275,gap=24,headerH=catHead?245:215,H=headerH+50+c.jogos.length*(card+gap)+55,cv=document.createElement('canvas'),g=cv.getContext('2d');cv.width=W;cv.height=H;
+
+ g.fillStyle='#f4f6f8';g.fillRect(0,0,W,H);
+ g.fillStyle='#17212b';g.fillRect(0,0,W,headerH);
+ g.fillStyle='#fff';g.textAlign='left';
+ g.font='bold 44px Arial';g.fillText(db.campeonato?.nome||'Campeonato',60,70);
+ g.font='bold 34px Arial';g.fillText(`TABELA DE JOGOS — ${c.rod.toUpperCase()}`,60,132);
+ g.font='bold 26px Arial';g.fillText(`CATEGORIA: ${c.cat.toUpperCase()}`,60,184);
+
+ let y=headerH+34;
+ for(const j of c.jogos){
+   g.fillStyle='#fff';rr(g,55,y,970,card,22);g.fill();
+
+   const lc=jogoEscolinhaLogo(j.casaTimeId),lf=jogoEscolinhaLogo(j.foraTimeId);
+   if(lc){try{g.drawImage(await carregarImagem(lc),82,y+30,82,82)}catch(e){}}
+   if(lf){try{g.drawImage(await carregarImagem(lf),916,y+30,82,82)}catch(e){}}
+
+   g.fillStyle='#17212b';g.font='bold 24px Arial';
+   g.textAlign='left';g.fillText(timeNome(j.casaTimeId).slice(0,24),178,y+68);
+   g.textAlign='right';g.fillText(timeNome(j.foraTimeId).slice(0,24),902,y+68);
+   g.textAlign='center';g.font='bold 32px Arial';g.fillText(placarOuX(j),540,y+70);
+
+   // Information strip
+   [
+    {x:174,label:'DATA',value:dataBR(j.data)||'Sem data'},
+    {x:415,label:'HORÁRIO',value:j.hora||'Sem horário'},
+    {x:656,label:'CATEGORIA',value:j.categoria||'Sem categoria'}
+   ].forEach(b=>{g.fillStyle='#eef2f6';rr(g,b.x,y+125,220,72,13);g.fill();g.fillStyle='#687483';g.font='bold 14px Arial';g.textAlign='center';g.fillText(b.label,b.x+110,y+150);g.fillStyle='#17212b';g.font='bold 21px Arial';g.fillText(String(b.value),b.x+110,y+180)});
+
+   const li=localInfoJogo(j);
+   g.fillStyle='#66717d';g.font='16px Arial';g.textAlign='center';
+   g.fillText(`${j.rodada||'Sem rodada'} • ${li.nome||'Local não informado'}`,540,y+222);
+
+   if(li.endereco){g.font='14px Arial';g.fillStyle='#7a8591';{const words=String(li.endereco).split(/\s+/);let lines=[''];for(const w of words){const i=lines.length-1,t=(lines[i]+' '+w).trim();if(g.measureText(t).width>690&&lines.length<2)lines.push(w);else lines[i]=t}lines.forEach((line,i)=>g.fillText(line,520,y+247+i*17))}}
+   if(li.maps){
+     const qr=await gerarQRCodeDataURL(li.maps);
+     if(qr){try{
+       const qim=await carregarImagem(qr);
+       g.drawImage(qim,925,y+207,62,62);
+       g.font='12px Arial';g.fillStyle='#66717d';g.fillText('Como chegar',956,y+272)
+     }catch(e){}}
+   }
+
+   y+=card+gap;
+ }
+ const a=document.createElement('a');
+ a.download=`jogos-${c.rod.replace(/\\s+/g,'-').toLowerCase()}-${c.cat.replace(/\\s+/g,'-').toLowerCase()}.png`;
+ a.href=cv.toDataURL('image/png');a.click()
+}
+function renderJogos(){
+ const filtro=$("jogoFiltroCategoria")?.value||"",rod=$("jogoFiltroRodada")?.value||"";
+ const arr=db.jogos.filter(j=>(!filtro||j.categoria===filtro)&&(!rod||j.rodada===rod));
+ $("listaJogos").innerHTML=arr.length?arr.map(j=>`<div class="item"><strong>${esc(timeNome(j.casaTimeId))} ${j.status==="Encerrado"?j.placarCasa:""} x ${j.status==="Encerrado"?j.placarFora:""} ${esc(timeNome(j.foraTimeId))}</strong><small><span class="catbadge">${esc(j.categoria||"")}</span> <strong>${esc(j.rodada||"Sem rodada")}</strong> | <strong>Data:</strong> ${esc(dataBR(j.data)||"Sem data")} | <strong>Horário:</strong> ${esc(j.hora||"Sem horário")} | ${esc(localInfoJogo(j).nome||"Local não informado")} | <span class="badge aprovada">${esc(j.status)}</span></small><div class="actions"><button class="secondary" onclick="abrirSumula('${j.id}')">Abrir súmula</button><button class="danger" onclick="excluirJogo('${j.id}')">Excluir</button></div></div>`).join(""):"<p class='empty'>Nenhum jogo nesta categoria.</p>"
+}
+
+function normalizeHeader(s){return norm(s)}
+function getByHeader(row,patterns){const keys=Object.keys(row);for(const p of patterns){const found=keys.find(k=>normalizeHeader(k).includes(p));if(found)return row[found]}return ""}
+function excelDateToISO(v){
+ if(!v)return "";if(typeof v==="number"){const d=new Date(Math.round((v-25569)*86400*1000));return d.toISOString().slice(0,10)}
+ const s=String(v).trim();if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)){const [d,m,y]=s.split("/");return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`}if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);return s
+}
+function normalizeDoc(v){return String(v??"").replace(/\D/g,"")}
+function normalizaCategoria(raw){
+ const s=String(raw||"").toUpperCase();
+ if(s.includes("SUB 14"))return "Sub-14";if(s.includes("SUB 08")||s.includes("SUB 8"))return "Sub-8";if(s.includes("SUB 07")||s.includes("SUB 7"))return "Sub-7 (revisar)";
+ return String(raw||"").trim()
+}
+function chaveInscricao(x){const rg=normalizeDoc(x.rg);if(rg)return "RG:"+rg;return "NB:"+norm(x.nome)+"|"+x.nascimento}
+function mapRow(row,nomeArquivo){
+ const nome=getByHeader(row,["nome completo do jogador","nome completo do jogador (a)"]);if(!nome)return null;
+ const equipe=getByHeader(row,["aluno(a) da escolinha","aluno da escolinha"]),rawCat=getByHeader(row,["categoria"]);
+ const categoria=normalizaCategoria(rawCat),fonte=equipe?"Forms Escolinhas":"Forms Atlético";
+ return {id:uid(),chave:"",nome:String(nome).trim(),rg:normalizeDoc(getByHeader(row,["numero do rg","numero do rg do jogador","rg do jogador"])),nascimento:excelDateToISO(getByHeader(row,["data de nascimento"])),categoria,categoriaOficial:categoriasCampeonato().includes(categoria)?categoria:"",categoriaOriginal:String(rawCat||""),responsavel:String(getByHeader(row,["nome completo do responsavel","nome do responsavel"])||"").trim(),telefone:String(getByHeader(row,["telefone do responsavel"])||"").trim(),comprovante:String(getByHeader(row,["nome que ira constar no comprovante"])||"").trim(),equipeInformada:String(equipe||"").trim(),timeId:"",fonte,arquivo:nomeArquivo,status:"Pendente",criadoEm:new Date().toISOString()}
+}
+function encontrarEscolinhaDaInscricao(i){
+ const alvo=norm(i.equipeInformada||'');let cs=[];
+ if(alvo){cs=db.escolinhas.filter(e=>norm(e.nome)===alvo);if(cs.length===1)return cs[0];cs=db.escolinhas.filter(e=>alvo.includes(norm(e.nome))||norm(e.nome).includes(alvo));if(cs.length===1)return cs[0]}
+ if(i.fonte==='Forms Atlético'){cs=db.escolinhas.filter(e=>norm(e.nome).includes('atletico'));if(cs.length===1)return cs[0]}
+ return null
+}
+function autoVincularInscricao(i){
+ const cat=i.categoriaOficial||i.categoria,e=encontrarEscolinhaDaInscricao(i);if(!e)return i;i.escolinhaReconhecidaId=e.id;const ts=db.times.filter(t=>t.escolinhaId===e.id&&t.categoria===cat);
+ if(ts.length===1){i.timeId=ts[0].id;i.autoReconhecido=true}else if(ts.length>1)i.autoReconhecido='parcial';return i
+}
+
+async function importarArquivo(){
+ const f=$("arquivoInscricoes").files[0];if(!f)return alert("Selecione a planilha.");
+ let rows=[];
+ try{
+  if(f.name.toLowerCase().endsWith(".csv"))rows=csvToObjects(await f.text());
+  else{
+   if(typeof XLSX==="undefined")return alert("Para importar .xlsx, conecte o dispositivo à internet ou exporte como CSV.");
+   const data=await f.arrayBuffer(),wb=XLSX.read(data,{type:"array",cellDates:false});
+   rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""})
+  }
+ }catch(e){console.error(e);return alert("Não foi possível ler o arquivo.")}
+ let novas=0,ignoradas=0;
+ rows.forEach(r=>{let x=mapRow(r,f.name);if(!x)return;x.chave=chaveInscricao(x);x=autoVincularInscricao(x);if(db.inscricoes.some(i=>i.chave===x.chave))ignoradas++;else{db.inscricoes.push(x);novas++}});
+ ultimaImportacao={novas,ignoradas};save();$("impMensagem").textContent=`Importação concluída: ${novas} nova(s), ${ignoradas} já existente(s).`
+}
+function csvToObjects(text){
+ const lines=text.replace(/\r/g,"").split("\n").filter(x=>x.trim());if(!lines.length)return[];
+ const sep=(lines[0].split(";").length>lines[0].split(",").length)?";":",";
+ const parse=line=>{let a=[],cur="",q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c=='"'){if(q&&line[i+1]=='"'){cur+='"';i++}else q=!q}else if(c===sep&&!q){a.push(cur);cur=""}else cur+=c}a.push(cur);return a};
+ const h=parse(lines[0]);return lines.slice(1).map(l=>{const v=parse(l),o={};h.forEach((k,i)=>o[k]=v[i]||"");return o})
+}
+function salvarFontes(){db.fontes={url1:$("sheetUrl1").value.trim(),url2:$("sheetUrl2").value.trim()};save();alert("Links salvos.")}
+function setCategoriaInscricao(id,cat){const i=db.inscricoes.find(x=>x.id===id);if(i){i.categoriaOficial=cat;i.timeId="";autoVincularInscricao(i);save()}}
+function setTimeInscricao(id,timeId){const i=db.inscricoes.find(x=>x.id===id);if(i){i.timeId=timeId;save()}}
+function aprovarInscricao(id){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
+ const cat=i.categoriaOficial||i.categoria;
+ if(!categoriasCampeonato().includes(cat))return alert("Selecione a categoria oficial.");
+ const t=db.times.find(t=>t.id===i.timeId);if(!t||t.categoria!==cat)return alert("Escolha o time participante correto.");
+ const ja=db.atletas.some(a=>(a.inscricaoId===id)||(i.rg&&normalizeDoc(a.rg)===i.rg&&a.categoria===cat));
+ if(!ja)db.atletas.push({id:uid(),inscricaoId:i.id,timeId:i.timeId,nome:i.nome,nascimento:i.nascimento,categoria:cat,rg:i.rg,responsavel:i.responsavel,telefone:i.telefone,origem:i.fonte});
+ i.status="Aprovada";i.categoriaOficial=cat;save()
+}
+function recusarInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){i.status="Recusada";save()}}
+function reabrirInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){i.status="Pendente";save()}}
+function detalhesInscricao(id){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
+ alert(`ATLETA: ${i.nome}\nRG: ${i.rg||"-"}\nNascimento: ${i.nascimento||"-"}\nCategoria recebida: ${i.categoria||"-"}\nCategoria oficial: ${i.categoriaOficial||"-"}\nTime: ${timeNome(i.timeId)}\nResponsável: ${i.responsavel||"-"}\nTelefone: ${i.telefone||"-"}\nEquipe informada no Forms: ${i.equipeInformada||"-"}\nFonte: ${i.fonte}`)
+}
+function renderInscricoes(){
+ const busca=norm($("fBusca")?.value||""),st=$("fStatus")?.value||"",catf=$("fCategoria")?.value||"",escf=$("fEscolinha")?.value||"";
+ const arr=db.inscricoes.filter(i=>{
+   const t=db.times.find(x=>x.id===i.timeId);
+   const inscricaoEscolinhaId=i.escolinhaReconhecidaId||t?.escolinhaId||"";
+   return (!st||i.status===st)&&(!catf||(i.categoriaOficial||i.categoria)===catf)&&(!escf||inscricaoEscolinhaId===escf)&&(!busca||norm(i.nome+" "+i.responsavel+" "+i.rg).includes(busca));
+ });
+ $("listaInscricoes").innerHTML=arr.length?arr.map(i=>{
+  const cat=i.categoriaOficial||i.categoria||"",times=timesDaCategoria(cat);
+  return `<div class="item">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div><strong>${esc(i.nome)}</strong><small>Categoria recebida: ${esc(i.categoria||"-")} | Nasc.: ${esc(i.nascimento||"-")} | RG: ${esc(i.rg||"-")}<br>Responsável: ${esc(i.responsavel||"-")} | Tel.: ${esc(i.telefone||"-")}</small></div>
+      <div><span class="source">${esc(i.fonte)}</span> <span class="badge ${i.status.toLowerCase()}">${i.status}</span></div>
+    </div>
+    ${i.equipeInformada?`<div class="warning">Escolinha/equipe informada no Forms: <strong>${esc(i.equipeInformada)}</strong></div>`:""}
+    ${i.autoReconhecido===true?`<div class="auto-ok">Categoria, escolinha e time reconhecidos automaticamente. Basta conferir e aprovar.</div>`:i.autoReconhecido==="parcial"?`<div class="auto-ok">Categoria e escolinha reconhecidas. Escolha apenas o Time A/B.</div>`:""}
+    ${(!i.categoriaOficial||i.categoria.includes("revisar"))?`<div class="warning">Confira a categoria oficial antes da aprovação.</div>`:""}
+    <div class="row">
+      <div><label>Categoria oficial</label><select onchange="setCategoriaInscricao('${i.id}',this.value)"><option value="">Selecione...</option>${categoriasCampeonato().map(c=>`<option value="${esc(c)}" ${cat===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+      <div><label>Time participante</label><select onchange="setTimeInscricao('${i.id}',this.value)"><option value="">Selecione...</option>${times.map(t=>`<option value="${t.id}" ${i.timeId===t.id?"selected":""}>${esc(t.nomeTabela)}</option>`).join("")}</select></div>
+    </div>
+    <div class="actions"><button class="light" onclick="detalhesInscricao('${i.id}')">Ver ficha</button>${i.status!=="Aprovada"?`<button class="primary" onclick="aprovarInscricao('${i.id}')">Aprovar</button>`:""}${i.status!=="Recusada"?`<button class="danger" onclick="recusarInscricao('${i.id}')">Recusar</button>`:""}${i.status!=="Pendente"?`<button class="amber" onclick="reabrirInscricao('${i.id}')">Reabrir</button>`:""}</div>
+  </div>`
+ }).join(""):"<p class='empty'>Nenhuma inscrição encontrada.</p>"
+}
+
+
+
+function artilhariaDaCategoria(cat){
+ const mapa={};
+ db.jogos.filter(j=>j.categoria===cat&&j.status==="Encerrado").forEach(j=>{
+   j.gols.forEach(g=>{
+     const a=db.atletas.find(x=>x.id===g.atletaId);
+     if(!a)return;
+     if(!mapa[a.id])mapa[a.id]={atletaId:a.id,nome:a.nome,timeId:a.timeId,gols:0};
+     mapa[a.id].gols++
+   })
+ });
+ return Object.values(mapa).sort((a,b)=>b.gols-a.gols||a.nome.localeCompare(b.nome,"pt-BR"))
+}
+function disciplinaDaCategoria(cat){
+ const mapa={};
+ db.jogos.filter(j=>j.categoria===cat&&j.status==="Encerrado").forEach(j=>{
+   j.cartoes.forEach(c=>{
+     const a=db.atletas.find(x=>x.id===c.atletaId);
+     if(!a)return;
+     if(!mapa[a.id])mapa[a.id]={atletaId:a.id,nome:a.nome,timeId:a.timeId,amarelos:0,vermelhos:0,total:0};
+     if(c.tipo==="Vermelho")mapa[a.id].vermelhos++;
+     else mapa[a.id].amarelos++;
+     mapa[a.id].total++
+   })
+ });
+ return Object.values(mapa).sort((a,b)=>b.vermelhos-a.vermelhos||b.amarelos-a.amarelos||a.nome.localeCompare(b.nome,"pt-BR"))
+}
+function renderArtilharia(){
+ const cat=$("artFiltroCategoria")?.value||"";if(!cat){$("artilhariaArea").innerHTML="<p class='empty'>Selecione uma categoria.</p>";return}
+ const arr=artilhariaDaCategoria(cat);
+ $("artilhariaArea").innerHTML=arr.length?`<table class="rank-table"><thead><tr><th>Pos.</th><th style="text-align:left">Atleta</th><th>Time</th><th>Gols</th></tr></thead><tbody>${arr.map((r,i)=>`<tr><td>${i+1}º</td><td class="name">${esc(r.nome)}</td><td>${esc(timeNome(r.timeId))}</td><td><strong>${r.gols}</strong></td></tr>`).join("")}</tbody></table>`:"<p class='empty'>Nenhum gol registrado nesta categoria.</p>"
+}
+function renderDisciplina(){
+ const cat=$("discFiltroCategoria")?.value||"";if(!cat){$("disciplinaArea").innerHTML="<p class='empty'>Selecione uma categoria.</p>";return}
+ const arr=disciplinaDaCategoria(cat);
+ $("disciplinaArea").innerHTML=arr.length?`<table class="rank-table"><thead><tr><th>Atleta</th><th>Time</th><th>Amarelos</th><th>Vermelhos</th><th>Total</th></tr></thead><tbody>${arr.map(r=>`<tr><td class="name">${esc(r.nome)}</td><td>${esc(timeNome(r.timeId))}</td><td>${r.amarelos}</td><td>${r.vermelhos}</td><td><strong>${r.total}</strong></td></tr>`).join("")}</tbody></table>`:"<p class='empty'>Nenhum cartão registrado nesta categoria.</p>"
+}
+function gerarArtilhariaPDF(){
+ const cat=$("artFiltroCategoria")?.value||"";if(!cat)return alert("Selecione uma categoria.");
+ const arr=artilhariaDaCategoria(cat);if(!arr.length)return alert("Nenhum gol registrado.");
+ if(!window.jspdf?.jsPDF)return alert("Gerador de PDF indisponível.");
+ const {jsPDF}=window.jspdf,d=new jsPDF({unit:"mm",format:"a4"}),m=14;
+ d.setFillColor(23,79,51);d.rect(0,0,210,34,"F");d.setTextColor(255,255,255);d.setFont(undefined,"bold");d.setFontSize(18);d.text(db.campeonato?.nome||"Campeonato",m,14);d.setFontSize(11);d.text(`ARTILHARIA • ${cat}`,m,23);
+ d.setTextColor(23,33,43);let y=45;d.setFontSize(9);d.text("Pos.",m,y);d.text("Atleta",m+18,y);d.text("Time",115,y);d.text("Gols",180,y);y+=6;d.setFont(undefined,"normal");
+ arr.forEach((r,i)=>{if(y>282){d.addPage();y=18}d.text(`${i+1}º`,m,y);d.text(r.nome.slice(0,40),m+18,y);d.text(timeNome(r.timeId).slice(0,25),115,y);d.text(String(r.gols),180,y);y+=7});
+ d.save(`artilharia-${norm(cat).replace(/\s+/g,"-")}.pdf`)
+}
+async function gerarArtilhariaImagem(){
+ const cat=$("artFiltroCategoria")?.value||"";if(!cat)return alert("Selecione uma categoria.");
+ const arr=artilhariaDaCategoria(cat);if(!arr.length)return alert("Nenhum gol registrado.");
+ const W=1080,row=70,H=220+arr.length*row+80,cv=document.createElement("canvas"),g=cv.getContext("2d");cv.width=W;cv.height=H;
+ g.fillStyle="#f4f6f8";g.fillRect(0,0,W,H);g.fillStyle="#174f33";g.fillRect(0,0,W,180);g.fillStyle="#fff";g.font="bold 44px Arial";g.fillText(db.campeonato?.nome||"Campeonato",55,70);g.font="28px Arial";g.fillText(`ARTILHARIA • ${cat}`,55,118);
+ let y=210;g.fillStyle="#dfe7e2";g.fillRect(45,y-32,990,40);g.fillStyle="#173124";g.font="bold 18px Arial";g.fillText("Pos.",60,y-7);g.fillText("Atleta",125,y-7);g.fillText("Time",650,y-7);g.fillText("Gols",940,y-7);
+ arr.forEach((r,i)=>{g.fillStyle=i%2===0?"#fff":"#f8faf9";g.fillRect(45,y+10,990,row-5);g.fillStyle="#17212b";g.font="bold 22px Arial";g.fillText(`${i+1}º`,60,y+50);g.font="19px Arial";g.fillText(r.nome.slice(0,30),125,y+50);g.fillText(timeNome(r.timeId).slice(0,22),650,y+50);g.font="bold 22px Arial";g.fillText(String(r.gols),950,y+50);y+=row});
+ const a=document.createElement("a");a.download=`artilharia-${norm(cat).replace(/\s+/g,"-")}.png`;a.href=cv.toDataURL("image/png");a.click()
+}
+function gerarDisciplinaPDF(){
+ const cat=$("discFiltroCategoria")?.value||"";if(!cat)return alert("Selecione uma categoria.");
+ const arr=disciplinaDaCategoria(cat);if(!arr.length)return alert("Nenhum cartão registrado.");
+ if(!window.jspdf?.jsPDF)return alert("Gerador de PDF indisponível.");
+ const {jsPDF}=window.jspdf,d=new jsPDF({unit:"mm",format:"a4"}),m=14;
+ d.setFillColor(23,79,51);d.rect(0,0,210,34,"F");d.setTextColor(255,255,255);d.setFont(undefined,"bold");d.setFontSize(18);d.text(db.campeonato?.nome||"Campeonato",m,14);d.setFontSize(11);d.text(`DISCIPLINA • ${cat}`,m,23);
+ d.setTextColor(23,33,43);let y=45;d.setFontSize(9);d.text("Atleta",m,y);d.text("Time",95,y);d.text("Amarelos",145,y);d.text("Vermelhos",170,y);d.text("Total",193,y,{align:"right"});y+=6;d.setFont(undefined,"normal");
+ arr.forEach(r=>{if(y>282){d.addPage();y=18}d.text(r.nome.slice(0,35),m,y);d.text(timeNome(r.timeId).slice(0,22),95,y);d.text(String(r.amarelos),150,y);d.text(String(r.vermelhos),177,y);d.text(String(r.total),193,y,{align:"right"});y+=7});
+ d.save(`disciplina-${norm(cat).replace(/\s+/g,"-")}.pdf`)
+}
+async function gerarDisciplinaImagem(){
+ const cat=$("discFiltroCategoria")?.value||"";if(!cat)return alert("Selecione uma categoria.");
+ const arr=disciplinaDaCategoria(cat);if(!arr.length)return alert("Nenhum cartão registrado.");
+ const W=1080,row=70,H=220+arr.length*row+80,cv=document.createElement("canvas"),g=cv.getContext("2d");cv.width=W;cv.height=H;
+ g.fillStyle="#f4f6f8";g.fillRect(0,0,W,H);g.fillStyle="#174f33";g.fillRect(0,0,W,180);g.fillStyle="#fff";g.font="bold 44px Arial";g.fillText(db.campeonato?.nome||"Campeonato",55,70);g.font="28px Arial";g.fillText(`DISCIPLINA • ${cat}`,55,118);
+ let y=210;g.fillStyle="#dfe7e2";g.fillRect(45,y-32,990,40);g.fillStyle="#173124";g.font="bold 18px Arial";g.fillText("Atleta",60,y-7);g.fillText("Time",520,y-7);g.fillText("Amarelos",760,y-7);g.fillText("Vermelhos",900,y-7);
+ arr.forEach((r,i)=>{g.fillStyle=i%2===0?"#fff":"#f8faf9";g.fillRect(45,y+10,990,row-5);g.fillStyle="#17212b";g.font="19px Arial";g.fillText(r.nome.slice(0,28),60,y+50);g.fillText(timeNome(r.timeId).slice(0,20),520,y+50);g.fillText(String(r.amarelos),790,y+50);g.fillText(String(r.vermelhos),930,y+50);y+=row});
+ const a=document.createElement("a");a.download=`disciplina-${norm(cat).replace(/\s+/g,"-")}.png`;a.href=cv.toDataURL("image/png");a.click()
+}
+
+function classificacaoDaCategoria(cat){
+ const times=timesDaCategoria(cat);
+ const mapa={};
+ times.forEach(t=>mapa[t.id]={timeId:t.id,time:t.nomeTabela,J:0,V:0,E:0,D:0,GP:0,GC:0,SG:0,PTS:0});
+ const jogos=db.jogos.filter(j=>j.categoria===cat&&j.status==="Encerrado");
+ jogos.forEach(j=>{
+   const a=mapa[j.casaTimeId],b=mapa[j.foraTimeId];if(!a||!b)return;
+   const gc=Number(j.placarCasa)||0,gf=Number(j.placarFora)||0;
+   a.J++;b.J++;a.GP+=gc;a.GC+=gf;b.GP+=gf;b.GC+=gc;
+   if(gc>gf){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
+   else if(gf>gc){b.V++;a.D++;b.PTS+=(db.campeonato?.pontosVitoria||3)}
+   else{a.E++;b.E++;a.PTS++;b.PTS++}
+ });
+ Object.values(mapa).forEach(x=>x.SG=x.GP-x.GC);
+ const criterio=$("classDesempate")?.value||"saldo";
+ return Object.values(mapa).sort((a,b)=>{
+   if(b.PTS!==a.PTS)return b.PTS-a.PTS;
+   if(b.V!==a.V)return b.V-a.V;
+   if(criterio==="gols"){
+     if(b.GP!==a.GP)return b.GP-a.GP;
+     if(b.SG!==a.SG)return b.SG-a.SG;
+   }else{
+     if(b.SG!==a.SG)return b.SG-a.SG;
+     if(b.GP!==a.GP)return b.GP-a.GP;
+   }
+   return a.time.localeCompare(b.time,"pt-BR")
+ })
+}
+function timeLogoClass(timeId){return jogoEscolinhaLogo(timeId)||""}
+function renderClassificacao(){
+ const cat=$("classFiltroCategoria")?.value||"";
+ if(!cat){$("classificacaoArea").innerHTML="<p class='empty'>Selecione uma categoria.</p>";$("classResumo").textContent="Selecione uma categoria para ver a tabela.";return}
+ const arr=classificacaoDaCategoria(cat);
+ const jogosEnc=db.jogos.filter(j=>j.categoria===cat&&j.status==="Encerrado").length;
+ $("classResumo").textContent=`${cat} • ${arr.length} time(s) • ${jogosEnc} jogo(s) encerrado(s)`;
+ $("classificacaoArea").innerHTML=arr.length?`<table class="class-table">
+  <thead><tr><th>Pos.</th><th style="text-align:left">Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>PTS</th></tr></thead>
+  <tbody>${arr.map((r,i)=>`<tr><td class="class-pos">${i+1}º</td><td class="team">${timeLogoClass(r.timeId)?`<img class="class-logo" src="${timeLogoClass(r.timeId)}">`:""}${esc(r.time)}</td><td>${r.J}</td><td>${r.V}</td><td>${r.E}</td><td>${r.D}</td><td>${r.GP}</td><td>${r.GC}</td><td>${r.SG>0?"+":""}${r.SG}</td><td><strong>${r.PTS}</strong></td></tr>`).join("")}</tbody>
+ </table>`:"<p class='empty'>Nenhum time cadastrado nesta categoria.</p>"
+}
+function gerarClassificacaoPDF(){
+ const cat=$("classFiltroCategoria")?.value||"";if(!cat)return alert("Selecione uma categoria.");
+ const arr=classificacaoDaCategoria(cat);if(!arr.length)return alert("Nenhum time nesta categoria.");
+ if(!window.jspdf?.jsPDF)return alert("Gerador de PDF indisponível.");
+ const {jsPDF}=window.jspdf,d=new jsPDF({unit:"mm",format:"a4"}),m=12;
+ d.setFillColor(23,79,51);d.rect(0,0,210,34,"F");d.setTextColor(255,255,255);d.setFont(undefined,"bold");d.setFontSize(18);d.text(db.campeonato?.nome||"Campeonato",m,14);d.setFontSize(11);d.text(`CLASSIFICAÇÃO • ${cat}`,m,23);
+ let y=45;
+ const cols=[m,m+14,m+86,m+100,m+112,m+124,m+136,m+148,m+160,m+174];
+ d.setTextColor(23,33,43);d.setFont(undefined,"bold");d.setFontSize(8);
+ ["Pos.","Time","J","V","E","D","GP","GC","SG","PTS"].forEach((h,i)=>d.text(h,cols[i],y));y+=5;
+ d.setFont(undefined,"normal");
+ arr.forEach((r,i)=>{
+   if(y>282){d.addPage();y=18}
+   if(i%2===0){d.setFillColor(247,249,251);d.rect(m,y-3,186,7,"F")}
+   d.text(`${i+1}º`,cols[0],y);
+   d.text(r.time.slice(0,35),cols[1],y);
+   [r.J,r.V,r.E,r.D,r.GP,r.GC,(r.SG>0?"+":"")+r.SG,r.PTS].forEach((v,k)=>d.text(String(v),cols[k+2],y));
+   y+=7
+ });
+ d.save(`classificacao-${norm(cat).replace(/\s+/g,"-")}.pdf`)
+}
+async function gerarClassificacaoImagem(){
+ const cat=$("classFiltroCategoria")?.value||"";if(!cat)return alert("Selecione uma categoria.");
+ const arr=classificacaoDaCategoria(cat);if(!arr.length)return alert("Nenhum time nesta categoria.");
+ const W=1080,row=70,H=240+arr.length*row+80,cv=document.createElement("canvas"),g=cv.getContext("2d");cv.width=W;cv.height=H;
+ g.fillStyle="#f4f6f8";g.fillRect(0,0,W,H);g.fillStyle="#174f33";g.fillRect(0,0,W,190);
+ g.fillStyle="#fff";g.font="bold 44px Arial";g.fillText(db.campeonato?.nome||"Campeonato",55,72);g.font="28px Arial";g.fillText(`CLASSIFICAÇÃO • ${cat}`,55,120);
+ let y=220;
+ g.fillStyle="#dfe7e2";g.fillRect(45,y-35,990,42);g.fillStyle="#173124";g.font="bold 18px Arial";
+ const xs=[65,120,610,660,710,760,810,860,910,970];
+ ["Pos.","Time","J","V","E","D","GP","GC","SG","PTS"].forEach((h,i)=>g.fillText(h,xs[i],y-8));
+ for(let i=0;i<arr.length;i++){
+   const r=arr[i];g.fillStyle=i%2===0?"#ffffff":"#f8faf9";g.fillRect(45,y+10,990,row-5);
+   const logo=timeLogoClass(r.timeId);if(logo){try{g.drawImage(await carregarImagem(logo),110,y+20,42,42)}catch(e){}}
+   g.fillStyle="#17212b";g.font="bold 22px Arial";g.fillText(`${i+1}º`,65,y+50);g.font="bold 19px Arial";g.fillText(r.time.slice(0,27),165,y+50);
+   g.font="18px Arial";[r.J,r.V,r.E,r.D,r.GP,r.GC,(r.SG>0?"+":"")+r.SG,r.PTS].forEach((v,k)=>g.fillText(String(v),xs[k+2],y+50));
+   y+=row
+ }
+ const a=document.createElement("a");a.download=`classificacao-${norm(cat).replace(/\s+/g,"-")}.png`;a.href=cv.toDataURL("image/png");a.click()
+}
+
+
+function montarPacoteMesario(j){
+ garantirNumeracaoJogo(j);
+ const casa=db.atletas.filter(a=>a.timeId===j.casaTimeId&&a.categoria===j.categoria).map(a=>({id:a.id,nome:a.nome,numero:numeroAtletaNoJogo(j,a.id)}));
+ const fora=db.atletas.filter(a=>a.timeId===j.foraTimeId&&a.categoria===j.categoria).map(a=>({id:a.id,nome:a.nome,numero:numeroAtletaNoJogo(j,a.id)}));
+ const tc=db.times.find(t=>t.id===j.casaTimeId),tf=db.times.find(t=>t.id===j.foraTimeId);
+ const ec=db.escolinhas.find(e=>e.id===tc?.escolinhaId),ef=db.escolinhas.find(e=>e.id===tf?.escolinhaId);
+ const li=localInfoJogo(j);
+ return {
+   schema:"copa-cap-mesario-v1",
+   exportedAt:new Date().toISOString(),
+   campeonato:{nome:db.campeonato?.nome||"Campeonato"},
+   jogo:{
+     id:j.id,categoria:j.categoria,rodada:j.rodada||"",data:j.data||"",hora:j.hora||"",
+     local:{nome:li.nome||"",endereco:li.endereco||"",maps:li.maps||""},
+     casa:{timeId:j.casaTimeId,nome:timeNome(j.casaTimeId),logo:ec?.logo||"",atletas:casa},
+     fora:{timeId:j.foraTimeId,nome:timeNome(j.foraTimeId),logo:ef?.logo||"",atletas:fora},
+     placarCasa:j.placarCasa||0,placarFora:j.placarFora||0,
+     gols:j.gols||[],cartoes:j.cartoes||[],observacoes:j.observacoes||"",
+     responsaveisSumula:j.responsaveisSumula||{arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""}
+   }
+ }
+}
+function exportarPacoteMesario(){
+ const id=$("mesarioJogoSelect")?.value;if(!id)return alert("Selecione uma partida.");
+ const j=db.jogos.find(x=>x.id===id);if(!j)return;
+ const pacote=montarPacoteMesario(j);
+ const blob=new Blob([JSON.stringify(pacote,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=`mesario-${norm(timeNome(j.casaTimeId))}-x-${norm(timeNome(j.foraTimeId))}.json`;a.click();URL.revokeObjectURL(url)
+}
+async function importarRetornoMesario(){
+ const f=$("retornoMesarioFile")?.files?.[0];if(!f)return alert("Selecione o arquivo retornado pelo mesário.");
+ let pacote;try{pacote=JSON.parse(await f.text())}catch(e){return alert("Arquivo inválido.")}
+ if(pacote.schema!=="copa-cap-mesario-v1"||!pacote.jogo?.id)return alert("Este arquivo não é um retorno válido do Modo Mesário.");
+ const j=db.jogos.find(x=>x.id===pacote.jogo.id);if(!j)return alert("A partida correspondente não foi encontrada neste sistema.");
+ if(!confirm(`Importar a súmula de ${timeNome(j.casaTimeId)} x ${timeNome(j.foraTimeId)}?`))return;
+ const r=pacote.jogo;
+ j.placarCasa=Number(r.placarCasa)||0;j.placarFora=Number(r.placarFora)||0;
+ j.gols=Array.isArray(r.gols)?r.gols:[];j.cartoes=Array.isArray(r.cartoes)?r.cartoes:[];
+ j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};
+ garantirNumeracaoJogo(j);
+ [...(r.casa?.atletas||[]),...(r.fora?.atletas||[])].forEach(a=>{const n=String(a.numero||"").trim();if(n)j.numeracaoAtletas[a.id]=n;else delete j.numeracaoAtletas[a.id]});
+ j.status=r.status||"Encerrado";j.encerradoEm=r.encerradoEm||new Date().toISOString();
+ salvarSemRender();renderTudo();alert("Retorno do mesário importado com sucesso.")
+}
+
+function abrirSumula(id){document.querySelector('[data-section="sumula"]').click();$("sumulaJogo").value=id;carregarSumula()}
+function garantirNumeracaoJogo(j){
+ if(!j.numeracaoAtletas||typeof j.numeracaoAtletas!=="object")j.numeracaoAtletas={};
+}
+function numeroAtletaNoJogo(j,atletaId){
+ garantirNumeracaoJogo(j);
+ return String(j.numeracaoAtletas[atletaId]||"").trim();
+}
+function atletaRotulo(a,j){
+ const n=numeroAtletaNoJogo(j,a.id);
+ return n?`#${esc(n)} — ${esc(a.nome)}`:`Sem nº — ${esc(a.nome)}`
+}
+function eventosDoTime(j,timeId,tipo){
+ const arr=tipo==="gol"?j.gols:j.cartoes;
+ return arr.filter(e=>e.timeId===timeId)
+}
+function atualizarNumeroAtleta(atletaId,valor,jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ garantirNumeracaoJogo(j);
+ const v=String(valor||"").trim();
+ if(v)j.numeracaoAtletas[atletaId]=v;else delete j.numeracaoAtletas[atletaId];
+ salvarSemRender();
+ $("sumulaJogo").value=jogoId;
+ carregarSumula();
+}
+function logoDoTime(timeId){
+ return jogoEscolinhaLogo(timeId)||""
+}
+
+function garantirCronometro(j){
+ if(!j.cronometro)j.cronometro={segundos:0,rodando:false,inicioTimestamp:null};
+}
+function segundosAtuais(j){
+ garantirCronometro(j);
+ if(j.cronometro.rodando && j.cronometro.inicioTimestamp){
+   return j.cronometro.segundos + Math.max(0,Math.floor((Date.now()-j.cronometro.inicioTimestamp)/1000))
+ }
+ return j.cronometro.segundos||0
+}
+function formatarTempo(seg){
+ const m=Math.floor(seg/60),s=seg%60;return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
+}
+function minutoAtualEvento(j){
+ return Math.max(1,Math.floor(segundosAtuais(j)/60)+1)
+}
+function atualizarCronometroTela(){
+ const el=$("cronometroDisplay");if(!el)return;
+ const j=db.jogos.find(x=>x.id===$("sumulaJogo").value);if(!j)return;
+ el.textContent=formatarTempo(segundosAtuais(j))
+}
+function iniciarCronometro(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;garantirCronometro(j);
+ if(!j.cronometro.rodando){j.cronometro.rodando=true;j.cronometro.inicioTimestamp=Date.now();salvarSemRender()}
+ if(cronometroInterval)clearInterval(cronometroInterval);
+ cronometroInterval=setInterval(atualizarCronometroTela,1000);atualizarCronometroTela()
+}
+function pausarCronometro(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;garantirCronometro(j);
+ if(j.cronometro.rodando){j.cronometro.segundos=segundosAtuais(j);j.cronometro.rodando=false;j.cronometro.inicioTimestamp=null;salvarSemRender()}
+ if(cronometroInterval){clearInterval(cronometroInterval);cronometroInterval=null}
+ atualizarCronometroTela()
+}
+function zerarCronometro(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ if(!confirm("Zerar o cronômetro desta partida?"))return;
+ j.cronometro={segundos:0,rodando:false,inicioTimestamp:null};salvarSemRender();
+ if(cronometroInterval){clearInterval(cronometroInterval);cronometroInterval=null}
+ atualizarCronometroTela()
+}
+function sincronizarCronometroAoAbrir(j){
+ garantirCronometro(j);
+ if(cronometroInterval){clearInterval(cronometroInterval);cronometroInterval=null}
+ if(j.cronometro.rodando)cronometroInterval=setInterval(atualizarCronometroTela,1000)
+}
+
+function colunaSumula(j,timeId,atletas,lado){
+ garantirNumeracaoJogo(j);
+ const gols=eventosDoTime(j,timeId,"gol"),cartoes=eventosDoTime(j,timeId,"cartao");
+ const sel=atletas.slice().sort((a,b)=>(Number(numeroAtletaNoJogo(j,a.id))||999)-(Number(numeroAtletaNoJogo(j,b.id))||999)||a.nome.localeCompare(b.nome,"pt-BR"));
+ const logo=logoDoTime(timeId);
+ return `<div class="sumula-col">
+   <div class="sumula-head">
+     ${logo?`<img src="${logo}" alt="">`:""}
+     <h3>${esc(timeNome(timeId))}</h3>
+   </div>
+
+   <div class="notice">A numeração abaixo vale somente para esta partida.</div>
+   <div class="checkbox-list">
+    ${sel.length?sel.map(a=>`<div class="player-row">
+      <input type="checkbox" checked>
+      <input type="number" min="0" inputmode="numeric" value="${esc(numeroAtletaNoJogo(j,a.id))}" placeholder="Nº" onchange="atualizarNumeroAtleta('${a.id}',this.value,'${j.id}')">
+      <span>${esc(a.nome)}</span>
+    </div>`).join(""):"<p>Sem atletas cadastrados.</p>"}
+   </div>
+
+   <div class="event-box">
+    <h4>Registrar gol</h4>
+    <label>Atleta</label>
+    <select id="golAtleta_${lado}">
+      <option value="">Selecione...</option>
+      ${sel.map(a=>`<option value="${a.id}">${atletaRotulo(a,j)}</option>`).join("")}
+    </select>
+    <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
+    <button class="btn secondary" onclick="registrarGolTime('${j.id}','${lado}')">Adicionar gol</button>
+    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>#${esc(g.numero||"?")} — ${esc(g.atleta)}</strong><small>${esc(g.minuto)}'</small><div class="actions"><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
+   </div>
+
+   <div class="event-box">
+    <h4>Registrar cartão</h4>
+    <label>Atleta</label>
+    <select id="cartaoAtleta_${lado}">
+      <option value="">Selecione...</option>
+      ${sel.map(a=>`<option value="${a.id}">${atletaRotulo(a,j)}</option>`).join("")}
+    </select>
+    <label>Tipo</label>
+    <select id="cartaoTipo_${lado}"><option>Amarelo</option><option>Vermelho</option></select>
+    <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
+    <button class="btn secondary" onclick="registrarCartaoTime('${j.id}','${lado}')">Adicionar cartão</button>
+    <div class="event-list">${cartoes.length?cartoes.map(c=>{const idx=j.cartoes.indexOf(c);return `<div class="item"><strong>${esc(c.tipo)} — #${esc(c.numero||"?")} — ${esc(c.atleta)}</strong><small>${esc(c.minuto)}'</small><div class="actions"><button class="danger" onclick="excluirCartao('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum cartão registrado.</span>"}</div>
+   </div>
+ </div>`
+}
+
+function excluirGol(jogoId,index){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ if(!confirm("Excluir este gol registrado?"))return;
+ j.gols.splice(index,1);
+ recalcularPlacarPorGols(j);
+ salvarSemRender();
+ $("sumulaJogo").value=jogoId;
+ carregarSumula();atualizarPreviewSumula(jogoId)
+}
+function excluirCartao(jogoId,index){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ if(!confirm("Excluir este cartão registrado?"))return;
+ j.cartoes.splice(index,1);
+ salvarSemRender();
+ $("sumulaJogo").value=jogoId;
+ carregarSumula();atualizarPreviewSumula(jogoId)
+}
+
+
+function garantirResponsaveisSumula(j){
+ if(!j.responsaveisSumula)j.responsaveisSumula={arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""};
+ if(j.responsaveisSumula.responsavel && !j.responsaveisSumula.responsavelCasa){
+   j.responsaveisSumula.responsavelCasa=j.responsaveisSumula.responsavel;
+ }
+ j.responsaveisSumula.responsavelCasa=j.responsaveisSumula.responsavelCasa||"";
+ j.responsaveisSumula.responsavelFora=j.responsaveisSumula.responsavelFora||"";
+}
+function salvarResponsaveisSumula(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ garantirResponsaveisSumula(j);
+ j.responsaveisSumula.arbitro=$("nomeArbitro")?.value.trim()||"";
+ j.responsaveisSumula.mesario=$("nomeMesario")?.value.trim()||"";
+ j.responsaveisSumula.responsavelCasa=$("nomeResponsavelCasa")?.value.trim()||"";
+ j.responsaveisSumula.responsavelFora=$("nomeResponsavelFora")?.value.trim()||"";
+ salvarSemRender();
+ atualizarPreviewSumula(jogoId)
+}
+function previewListaAtletas(arr,j){
+ return arr.length?arr.map(a=>`<div class="preview-row"><span>#${esc(numeroAtletaNoJogo(j,a.id)||"-")}</span><span>${esc(a.nome)}</span><span></span></div>`).join(""):`<div class="preview-row"><span>-</span><span>Nenhum atleta relacionado</span><span></span></div>`
+}
+function previewEventos(arr,tipo){
+ if(!arr.length)return `<div class="preview-row"><span>-</span><span>Nenhum registro</span><span></span></div>`;
+ return arr.map(e=>`<div class="preview-row"><span>#${esc(e.numero||"-")}</span><span>${tipo==="cartao"?esc(e.tipo)+" — ":""}${esc(e.atleta)}</span><span>${esc(e.minuto)}'</span></div>`).join("")
+}
+function atualizarPreviewSumula(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId),el=$("previewSumula");if(!j||!el)return;
+ garantirResponsaveisSumula(j);
+ const li=localInfoJogo(j);
+ garantirNumeracaoJogo(j);
+ const casa=db.atletas.filter(a=>a.timeId===j.casaTimeId&&a.categoria===j.categoria).sort((a,b)=>(Number(numeroAtletaNoJogo(j,a.id))||999)-(Number(numeroAtletaNoJogo(j,b.id))||999)||a.nome.localeCompare(b.nome,"pt-BR"));
+ const fora=db.atletas.filter(a=>a.timeId===j.foraTimeId&&a.categoria===j.categoria).sort((a,b)=>(Number(numeroAtletaNoJogo(j,a.id))||999)-(Number(numeroAtletaNoJogo(j,b.id))||999)||a.nome.localeCompare(b.nome,"pt-BR"));
+ const gc=j.gols.filter(g=>g.timeId===j.casaTimeId),gf=j.gols.filter(g=>g.timeId===j.foraTimeId);
+ const cc=j.cartoes.filter(c=>c.timeId===j.casaTimeId),cf=j.cartoes.filter(c=>c.timeId===j.foraTimeId);
+ el.innerHTML=`<div class="preview-sheet">
+   <div class="preview-top">
+     <h2>SÚMULA DA PARTIDA</h2>
+     <h3>${esc(db.campeonato?.nome||"Campeonato")}</h3>
+   </div>
+   <div class="preview-meta">
+     <div><small>Categoria</small><strong>${esc(j.categoria||"-")}</strong></div>
+     <div><small>Rodada</small><strong>${esc(j.rodada||"-")}</strong></div>
+     <div><small>Data</small><strong>${esc(dataBR(j.data))}</strong></div>
+     <div><small>Horário</small><strong>${esc(j.hora||"-")}</strong></div>
+     <div><small>Local</small><strong>${esc(li.nome||"-")}</strong></div>
+   </div>
+   <div class="preview-score">
+     <div class="preview-team">${logoDoTime(j.casaTimeId)?`<img src="${logoDoTime(j.casaTimeId)}" alt="">`:""}<span>${esc(timeNome(j.casaTimeId))}</span></div>
+     <div class="preview-score-num">${j.placarCasa} x ${j.placarFora}</div>
+     <div class="preview-team right"><span>${esc(timeNome(j.foraTimeId))}</span>${logoDoTime(j.foraTimeId)?`<img src="${logoDoTime(j.foraTimeId)}" alt="">`:""}</div>
+   </div>
+   <div class="preview-columns">
+     <div class="preview-col">
+       <h3>${esc(timeNome(j.casaTimeId))}</h3>
+       <div class="preview-block"><h4>Atletas relacionados</h4>${previewListaAtletas(casa,j)}</div>
+       <div class="preview-block"><h4>Gols</h4>${previewEventos(gc,"gol")}</div>
+       <div class="preview-block"><h4>Cartões</h4>${previewEventos(cc,"cartao")}</div>
+     </div>
+     <div class="preview-col">
+       <h3>${esc(timeNome(j.foraTimeId))}</h3>
+       <div class="preview-block"><h4>Atletas relacionados</h4>${previewListaAtletas(fora,j)}</div>
+       <div class="preview-block"><h4>Gols</h4>${previewEventos(gf,"gol")}</div>
+       <div class="preview-block"><h4>Cartões</h4>${previewEventos(cf,"cartao")}</div>
+     </div>
+   </div>
+   <div class="preview-block" style="margin-top:14px"><h4>Ocorrências / observações</h4><div>${esc(j.observacoes||"Nenhuma ocorrência registrada.")}</div></div>
+   <div class="preview-officials" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+     <div><small>Árbitro</small><strong>${esc(j.responsaveisSumula.arbitro||"Não informado")}</strong></div>
+     <div><small>Mesário</small><strong>${esc(j.responsaveisSumula.mesario||"Não informado")}</strong></div>
+     <div><small>Responsável — ${esc(timeNome(j.casaTimeId))}</small><strong>${esc(j.responsaveisSumula.responsavelCasa||"Não informado")}</strong></div>
+     <div><small>Responsável — ${esc(timeNome(j.foraTimeId))}</small><strong>${esc(j.responsaveisSumula.responsavelFora||"Não informado")}</strong></div>
+   </div>
+ </div>`
+}
+
+
+function limparSumulaJogo(id){
+ const j=db.jogos.find(x=>x.id===id);if(!j)return;
+ if(!confirm("Limpar placar, gols, cartões, cronômetro, observações e responsáveis desta súmula?"))return;
+ j.status="Agendado";
+ j.placarCasa=0;
+ j.placarFora=0;
+ j.gols=[];
+ j.cartoes=[];
+ j.observacoes="";
+ j.cronometro={segundos:0,rodando:false,inicioTimestamp:null};
+ j.responsaveisSumula={arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""};
+ j.numeracaoAtletas={};
+ delete j.encerradoEm;
+ salvarSemRender();
+ if($("sumulaJogo"))$("sumulaJogo").value=id;
+ carregarSumula();
+ alert("Súmula limpa.")
+}
+
+function carregarSumula(){
+ const j=db.jogos.find(x=>x.id===$("sumulaJogo").value);if(!j){$("sumulaArea").innerHTML="<p>Selecione um jogo.</p>";return}
+ const ac=db.atletas.filter(a=>a.timeId===j.casaTimeId&&a.categoria===j.categoria);
+ const af=db.atletas.filter(a=>a.timeId===j.foraTimeId&&a.categoria===j.categoria);
+ $("sumulaArea").innerHTML=`
+   <div class="sumula-meta">
+     <div class="meta-card"><strong>Categoria</strong><span>${esc(j.categoria||"-")}</span></div>
+     <div class="meta-card"><strong>Rodada</strong><span>${esc(j.rodada||"-")}</span></div>
+     <div class="meta-card"><strong>Horário</strong><span>${esc(j.hora||"-")}</span></div>
+   </div>
+   <div class="score">${esc(timeNome(j.casaTimeId))} ${j.placarCasa} x ${j.placarFora} ${esc(timeNome(j.foraTimeId))}</div>
+   <div class="timer-box">
+     <span class="timer-display" id="cronometroDisplay">${formatarTempo(segundosAtuais(j))}</span>
+     <button class="btn primary" onclick="iniciarCronometro('${j.id}')">Iniciar</button>
+     <button class="btn amber" onclick="pausarCronometro('${j.id}')">Pausar</button>
+     <button class="btn light" onclick="zerarCronometro('${j.id}')">Zerar</button>
+   </div>
+   <div class="row">
+     <div><label>Placar ${esc(timeNome(j.casaTimeId))}</label><input id="sumPlacarCasa" type="number" min="0" value="${j.placarCasa}"></div>
+     <div><label>Placar ${esc(timeNome(j.foraTimeId))}</label><input id="sumPlacarFora" type="number" min="0" value="${j.placarFora}"></div>
+   </div>
+   <div class="sumula-grid">
+     ${colunaSumula(j,j.casaTimeId,ac,"casa")}
+     ${colunaSumula(j,j.foraTimeId,af,"fora")}
+   </div>
+   <label>Observações gerais da partida</label>
+   <textarea id="sumObservacoes">${esc(j.observacoes||"")}</textarea>
+   <div class="grid">
+     <div><label>Árbitro</label><input id="nomeArbitro" value="${esc((j.responsaveisSumula||{}).arbitro||"")}" placeholder="Nome completo"></div>
+     <div><label>Mesário</label><input id="nomeMesario" value="${esc((j.responsaveisSumula||{}).mesario||"")}" placeholder="Nome completo"></div>
+     <div><label>Responsável — ${esc(timeNome(j.casaTimeId))}</label><input id="nomeResponsavelCasa" value="${esc((j.responsaveisSumula||{}).responsavelCasa||"")}" placeholder="Nome do responsável da equipe"></div>
+     <div><label>Responsável — ${esc(timeNome(j.foraTimeId))}</label><input id="nomeResponsavelFora" value="${esc((j.responsaveisSumula||{}).responsavelFora||"")}" placeholder="Nome do responsável da equipe"></div>
+   </div>
+   <button class="btn light" onclick="salvarResponsaveisSumula('${j.id}')">Salvar responsáveis</button>
+   <button class="btn primary" onclick="encerrarJogo('${j.id}')">Encerrar partida e salvar súmula</button>
+   <button class="btn danger" onclick="limparSumulaJogo('${j.id}')">Limpar súmula / reiniciar jogo</button>
+   <div class="sumula-preview">
+     <h3>Pré-visualização da súmula</h3>
+     <div id="previewSumula"></div>
+     <div class="actions" style="margin-top:12px">
+       <button class="btn secondary" onclick="gerarSumulaPDF('${j.id}')">Gerar súmula em PDF</button>
+     </div>
+   </div>
+   `
+ garantirResponsaveisSumula(j);
+ sincronizarCronometroAoAbrir(j);
+ atualizarPreviewSumula(j.id)
+}
+
+function recalcularPlacarPorGols(j){
+ j.placarCasa=j.gols.filter(g=>g.timeId===j.casaTimeId).length;
+ j.placarFora=j.gols.filter(g=>g.timeId===j.foraTimeId).length;
+}
+
+function registrarGolTime(jogoId,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),sel=$(`golAtleta_${lado}`),a=db.atletas.find(x=>x.id===sel.value);
+ if(!a)return alert("Selecione o número do atleta.");
+ const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
+ const min=minutoAtualEvento(j);
+ j.gols.push({atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,minuto:min});
+ recalcularPlacarPorGols(j);
+ salvarSemRender();
+ $("sumulaJogo").value=jogoId;
+ carregarSumula();atualizarPreviewSumula(jogoId)
+}
+function registrarCartaoTime(jogoId,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),sel=$(`cartaoAtleta_${lado}`),a=db.atletas.find(x=>x.id===sel.value);
+ if(!a)return alert("Selecione o número do atleta.");
+ const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
+ const tipo=$(`cartaoTipo_${lado}`).value,min=minutoAtualEvento(j);
+ j.cartoes.push({atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,tipo,minuto:min});
+ salvarSemRender();
+ $("sumulaJogo").value=jogoId;
+ carregarSumula();atualizarPreviewSumula(jogoId)
+}
+
+function encerrarJogo(id){
+ const j=db.jogos.find(x=>x.id===id);if(!j)return;
+ pausarCronometro(id);
+ recalcularPlacarPorGols(j);
+ if(j.gols.length===0){
+   j.placarCasa=+$("sumPlacarCasa").value||0;
+   j.placarFora=+$("sumPlacarFora").value||0;
+ }
+ j.observacoes=$("sumObservacoes").value.trim();
+ garantirResponsaveisSumula(j);
+ j.responsaveisSumula.arbitro=$("nomeArbitro")?.value.trim()||j.responsaveisSumula.arbitro||"";
+ j.responsaveisSumula.mesario=$("nomeMesario")?.value.trim()||j.responsaveisSumula.mesario||"";
+ j.responsaveisSumula.responsavelCasa=$("nomeResponsavelCasa")?.value.trim()||j.responsaveisSumula.responsavelCasa||"";
+ j.responsaveisSumula.responsavelFora=$("nomeResponsavelFora")?.value.trim()||j.responsaveisSumula.responsavelFora||"";
+ j.status="Encerrado";
+ j.encerradoEm=new Date().toISOString();
+ salvarSemRender();
+ $("sumulaJogo").value=id;
+ carregarSumula();
+ atualizarPreviewSumula(id);
+ alert("Partida encerrada e súmula salva.");
+}
+function gerarSumulaPDF(id){
+ const j=db.jogos.find(x=>x.id===id);if(!j)return;
+ if(!window.jspdf?.jsPDF)return alert("Gerador de PDF indisponível.");
+ const {jsPDF}=window.jspdf;
+ const d=new jsPDF({unit:"mm",format:"a4"});
+ const W=210,H=297,m=8;
+ const azul=[15,77,139], azulEscuro=[10,43,79], cinza=[235,240,245], texto=[20,30,42];
+ const li=localInfoJogo(j);
+ garantirNumeracaoJogo(j);
+ const casa=db.atletas.filter(a=>a.timeId===j.casaTimeId&&a.categoria===j.categoria).sort((a,b)=>(Number(numeroAtletaNoJogo(j,a.id))||999)-(Number(numeroAtletaNoJogo(j,b.id))||999)||a.nome.localeCompare(b.nome,"pt-BR"));
+ const fora=db.atletas.filter(a=>a.timeId===j.foraTimeId&&a.categoria===j.categoria).sort((a,b)=>(Number(numeroAtletaNoJogo(j,a.id))||999)-(Number(numeroAtletaNoJogo(j,b.id))||999)||a.nome.localeCompare(b.nome,"pt-BR"));
+ const golsCasa=j.gols.filter(g=>g.timeId===j.casaTimeId);
+ const golsFora=j.gols.filter(g=>g.timeId===j.foraTimeId);
+ const cartCasa=j.cartoes.filter(c=>c.timeId===j.casaTimeId);
+ const cartFora=j.cartoes.filter(c=>c.timeId===j.foraTimeId);
+
+ function fill(c){d.setFillColor(...c)}
+ function stroke(c){d.setDrawColor(...c)}
+ function txt(c){d.setTextColor(...c)}
+ function box(x,y,w,h,r=2,fc=[255,255,255],sc=[205,215,225]){fill(fc);stroke(sc);d.roundedRect(x,y,w,h,r,r,"FD")}
+ function sectionTitle(x,y,w,label){
+   fill(azul);d.roundedRect(x,y,w,8,1.5,1.5,"F");
+   txt([255,255,255]);d.setFont(undefined,"bold");d.setFontSize(9);d.text(label,x+4,y+5.4);
+   txt(texto)
+ }
+ function addLogo(src,x,y,w,h){
+   if(!src)return;
+   try{d.addImage(src,"PNG",x,y,w,h)}catch(e){try{d.addImage(src,"JPEG",x,y,w,h)}catch(e2){}}
+ }
+ function teamHeader(x,y,w,timeId){
+   const logo=logoDoTime(timeId),nome=timeNome(timeId);
+   addLogo(logo,x,y,16,16);
+   d.setFont(undefined,"bold");d.setFontSize(10.5);txt(texto);
+   const lines=d.splitTextToSize(nome,w-22);
+   d.text(lines,x+20,y+6);
+ }
+ function headerCell(x,y,w,label,value){
+   fill([56,115,168]);d.roundedRect(x,y,w,6,1,1,"F");
+   txt([255,255,255]);d.setFont(undefined,"bold");d.setFontSize(7.5);d.text(label,x+w/2,y+4.2,{align:"center"});
+   box(x,y+6,w,14,1,[248,250,252],[218,225,232]);
+   txt(azulEscuro);d.setFontSize(10.5);d.text(String(value||"-"),x+w/2,y+15,{align:"center"});
+ }
+ function drawPlayers(x,y,w,arr){
+   sectionTitle(x,y,w,"ATLETAS RELACIONADOS");
+   let yy=y+8;
+   fill([226,233,240]);d.rect(x,yy,w,6,"F");
+   txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(7.5);
+   d.text("Nº",x+7,yy+4,{align:"center"});d.text("ATLETA",x+12,yy+4);
+   yy+=6;
+   d.setFont(undefined,"normal");d.setFontSize(7.7);txt(texto);
+   const maxRows=Math.max(8,arr.length);
+   for(let i=0;i<maxRows;i++){
+     fill(i%2===0?[250,251,252]:[244,247,249]);stroke([218,225,232]);d.rect(x,yy,w,5.3,"FD");
+     if(arr[i]){
+       d.text(String(numeroAtletaNoJogo(j,arr[i].id)||"-"),x+7,yy+3.6,{align:"center"});
+       d.text(String(arr[i].nome).slice(0,38),x+12,yy+3.6);
+     }
+     yy+=5.3
+   }
+   return yy
+ }
+ function drawGoals(x,y,w,arr){
+   sectionTitle(x,y,w,"GOLS");
+   let yy=y+8;
+   fill([226,233,240]);d.rect(x,yy,w,6,"F");
+   txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(7.3);
+   d.text("Nº",x+7,yy+4,{align:"center"});d.text("ATLETA",x+13,yy+4);d.text("TEMPO",x+w-10,yy+4,{align:"center"});
+   yy+=6;d.setFont(undefined,"normal");d.setFontSize(7.4);txt(texto);
+   const rows=Math.max(4,arr.length);
+   for(let i=0;i<rows;i++){
+     fill(i%2===0?[250,251,252]:[244,247,249]);stroke([218,225,232]);d.rect(x,yy,w,5.3,"FD");
+     if(arr[i]){
+       d.text(String(arr[i].numero||"-"),x+7,yy+3.6,{align:"center"});
+       d.text(String(arr[i].atleta).slice(0,30),x+13,yy+3.6);
+       d.text(`${arr[i].minuto}'`,x+w-10,yy+3.6,{align:"center"});
+     }
+     yy+=5.3
+   }
+   return yy
+ }
+ function drawCards(x,y,w,arr){
+   sectionTitle(x,y,w,"CARTÕES");
+   let yy=y+8;
+   fill([226,233,240]);d.rect(x,yy,w,6,"F");
+   txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(7.2);
+   d.text("TIPO",x+9,yy+4,{align:"center"});d.text("Nº",x+23,yy+4,{align:"center"});d.text("ATLETA",x+29,yy+4);d.text("TEMPO",x+w-10,yy+4,{align:"center"});
+   yy+=6;d.setFont(undefined,"normal");d.setFontSize(7.2);txt(texto);
+   const rows=Math.max(4,arr.length);
+   for(let i=0;i<rows;i++){
+     fill(i%2===0?[250,251,252]:[244,247,249]);stroke([218,225,232]);d.rect(x,yy,w,5.3,"FD");
+     if(arr[i]){
+       d.text(String(arr[i].tipo||"-").slice(0,8),x+9,yy+3.6,{align:"center"});
+       d.text(String(arr[i].numero||"-"),x+23,yy+3.6,{align:"center"});
+       d.text(String(arr[i].atleta).slice(0,25),x+29,yy+3.6);
+       d.text(`${arr[i].minuto}'`,x+w-10,yy+3.6,{align:"center"});
+     }
+     yy+=5.3
+   }
+   return yy
+ }
+
+ // Header
+ fill([248,250,252]);d.rect(0,0,W,36,"F");
+ txt(azulEscuro);
+ d.setFont(undefined,"bold");d.setFontSize(18);d.text("SÚMULA DA PARTIDA",W/2,11,{align:"center"});
+ d.setFontSize(11);d.text(db.campeonato?.nome||"COPA CAP 2026",W/2,18,{align:"center"});
+ d.setFont(undefined,"normal");d.setFontSize(7.5);d.text("MAIS QUE UMA COMPETIÇÃO, UMA GRANDE FAMÍLIA!",W/2,24,{align:"center"});
+ d.setFont(undefined,"bold");d.setFontSize(8);d.text("RESPEITO • FAIR PLAY • AMIZADE • EVOLUÇÃO",W/2,31,{align:"center"});
+
+ // Metadata
+ const yy=39;
+ headerCell(8,yy,32,"CATEGORIA",j.categoria||"-");
+ headerCell(42,yy,35,"RODADA",j.rodada||"-");
+ headerCell(79,yy,34,"DATA",dataBR(j.data));
+ headerCell(115,yy,28,"HORÁRIO",j.hora||"-");
+ headerCell(145,yy,57,"LOCAL",li.nome||"-");
+
+ // Match score row
+ const sy=63;
+ teamHeader(12,sy,70,j.casaTimeId);
+ teamHeader(128,sy,70,j.foraTimeId);
+ fill([231,237,243]);d.roundedRect(85,sy,16,18,2,2,"F");d.roundedRect(109,sy,16,18,2,2,"F");
+ txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(20);d.text(String(j.placarCasa),93,sy+12,{align:"center"});d.text(String(j.placarFora),117,sy+12,{align:"center"});
+ d.setFontSize(11);d.text("x",105,sy+11,{align:"center"});
+
+ // Main two-column body
+ const gap=5,colW=(W-2*m-gap)/2,left=m,right=m+colW+gap;
+ let yL=86,yR=86;
+ yL=drawPlayers(left,yL,colW,casa);
+ yR=drawPlayers(right,yR,colW,fora);
+ let y=Math.max(yL,yR)+5;
+ const g1=drawGoals(left,y,colW,golsCasa),g2=drawGoals(right,y,colW,golsFora);
+ y=Math.max(g1,g2)+5;
+ const c1=drawCards(left,y,colW,cartCasa),c2=drawCards(right,y,colW,cartFora);
+ y=Math.max(c1,c2)+5;
+
+ // Occurrences
+ if(y>238){d.addPage();y=16}
+ sectionTitle(m,y,W-2*m,"OCORRÊNCIAS / OBSERVAÇÕES");
+ box(m,y+8,W-2*m,24,2,[250,251,252],[210,218,226]);
+ txt(texto);d.setFont(undefined,"normal");d.setFontSize(8);
+ const obs=d.splitTextToSize(j.observacoes||"Nenhuma ocorrência registrada.",W-2*m-8);
+ d.text(obs,m+4,y+14);
+ y+=36;
+
+ // Identificação digital dos responsáveis
+ if(y>258){d.addPage();y=18}
+ garantirResponsaveisSumula(j);
+ const sw=(W-2*m-4)/2;
+ [["ÁRBITRO",j.responsaveisSumula.arbitro||"Não informado"],
+  ["MESÁRIO",j.responsaveisSumula.mesario||"Não informado"],
+  [`RESPONSÁVEL — ${timeNome(j.casaTimeId)}`,j.responsaveisSumula.responsavelCasa||"Não informado"],
+  [`RESPONSÁVEL — ${timeNome(j.foraTimeId)}`,j.responsaveisSumula.responsavelFora||"Não informado"]].forEach((r,i)=>{
+    const x=m+(i%2)*(sw+4), yy=y+Math.floor(i/2)*25;
+    box(x,yy,sw,22,2,[250,251,252],[210,218,226]);
+    fill([228,235,242]);d.rect(x,yy,sw,7,"F");txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(7.2);d.text(r[0],x+sw/2,yy+4.6,{align:"center"});
+    txt(texto);d.setFont(undefined,"bold");d.setFontSize(8);d.text(d.splitTextToSize(r[1],sw-8),x+4,yy+14)
+ });
+
+ // Footer
+ fill(azulEscuro);d.rect(0,287,W,10,"F");txt([255,255,255]);d.setFont(undefined,"bold");d.setFontSize(8);
+ d.text("COPA CAP",W/2,293,{align:"center"});
+ d.setFont(undefined,"normal");d.setFontSize(6.5);
+ d.text(`Registro gerado em ${new Date().toLocaleString("pt-BR")}`,W-8,293,{align:"right"});
+
+ d.save(`sumula-oficial-${norm(timeNome(j.casaTimeId))}-x-${norm(timeNome(j.foraTimeId))}.pdf`)
+}
+
+function exportarBackup(){
+ const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=`backup-gestor-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url)
+}
+async function restaurarBackup(){
+ const f=$("arquivoBackup").files[0];if(!f)return alert("Selecione um arquivo de backup.");
+ if(!confirm("Isso substituirá os dados atuais deste navegador. Continuar?"))return;
+ try{const novo=JSON.parse(await f.text());db=novo;localStorage.setItem(KEY,JSON.stringify(db));location.reload()}catch(e){alert("Arquivo de backup inválido.")}
+}
+
+function renderTudo(){
+ $("stEscolinhas").textContent=db.escolinhas.length;$("stTimes").textContent=db.times.length;$("stPendentes").textContent=db.inscricoes.filter(i=>i.status==="Pendente").length;$("stAtletas").textContent=db.atletas.length;$("stJogos").textContent=db.jogos.length;$("stEncerrados").textContent=db.jogos.filter(j=>j.status==="Encerrado").length;
+ $("impTotal").textContent=db.inscricoes.length;$("impNovas").textContent=ultimaImportacao.novas;$("impIgnoradas").textContent=ultimaImportacao.ignoradas;
+
+ if(db.campeonato){
+  $("dashNome").textContent=db.campeonato.nome||"Campeonato";$("dashInfo").textContent=`${db.campeonato.formato||""} | ${db.campeonato.inicio||"?"} até ${db.campeonato.fim||"?"}`;
+  $("dashCategorias").innerHTML=categoriasCampeonato().map(c=>`<span class="chip">${esc(c)}</span>`).join("");
+  $("campNome").value=db.campeonato.nome||"";$("campInicio").value=db.campeonato.inicio||"";$("campFim").value=db.campeonato.fim||"";$("campFormato").value=db.campeonato.formato||"Pontos corridos";$("campPontosVitoria").value=db.campeonato.pontosVitoria||3;
+ }
+ categoriasEdicao=[...categoriasCampeonato()];renderCategoriasCampeonato();
+
+ ["timeCategoria","timeFiltroCategoria","atlFiltroCategoria","jogoCategoria","jogoFiltroCategoria","fCategoria","classFiltroCategoria","artFiltroCategoria","discFiltroCategoria"].forEach(id=>preencherSelectCategorias(id,["timeFiltroCategoria","atlFiltroCategoria","jogoFiltroCategoria","fCategoria"].includes(id)));
+ const escAtual=$("timeEscolinha").value;
+ $("timeEscolinha").innerHTML='<option value="">Selecione...</option>'+db.escolinhas.map(e=>`<option value="${e.id}">${esc(e.nome)}</option>`).join("");
+ if([...$("timeEscolinha").options].some(o=>o.value===escAtual))$("timeEscolinha").value=escAtual;
+ if($("fEscolinha")){
+   const atualFE=$("fEscolinha").value||"";
+   $("fEscolinha").innerHTML='<option value="">Todas as escolinhas</option>'+db.escolinhas.slice().sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")).map(e=>`<option value="${e.id}">${esc(e.nome)}</option>`).join("");
+   if([...$("fEscolinha").options].some(o=>o.value===atualFE))$("fEscolinha").value=atualFE;
+ }
+
+ $("listaEscolinhas").innerHTML=db.escolinhas.length?db.escolinhas.map(e=>{
+   const qtd=db.times.filter(t=>t.escolinhaId===e.id).length;
+   return `<div class="item"><div class="item-flex">${e.logo?`<img class="logo-mini" src="${e.logo}" alt="">`:''}<div><strong>${esc(e.nome)}</strong><small>Responsável: ${esc(e.treinador||"-")} | Instagram: ${esc(e.instagram||"-")} | ${qtd} time(s) participante(s)</small></div></div><div class="actions"><button class="secondary" onclick="editarEscolinha('${e.id}')">Editar</button><button class="light" onclick="alert('WhatsApp: ${esc(e.whatsapp||"não informado")}')">Contato</button><button class="danger" onclick="excluirEscolinha('${e.id}')">Excluir</button></div></div>`
+ }).join(""):"<p class='empty'>Nenhuma escolinha.</p>";
+
+ if(db.fontes.url1)$("sheetUrl1").value=db.fontes.url1;if(db.fontes.url2)$("sheetUrl2").value=db.fontes.url2;
+
+ preencherRodadas();preencherLocais();atualizarTimesJogo();renderTimes();atualizarFiltrosAtletas();renderJogos();renderInscricoes();
+ if($("classFiltroCategoria")){
+   const atualClass=$("classFiltroCategoria").value;
+   $("classFiltroCategoria").innerHTML='<option value="">Selecione...</option>'+categoriasCampeonato().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+   if([...$("classFiltroCategoria").options].some(o=>o.value===atualClass))$("classFiltroCategoria").value=atualClass;
+   renderClassificacao();
+ }
+ ["artFiltroCategoria","discFiltroCategoria"].forEach(id=>{
+   if($(id)){
+     const atual=$(id).value;
+     $(id).innerHTML='<option value="">Selecione...</option>'+categoriasCampeonato().map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+     if([...$(id).options].some(o=>o.value===atual))$(id).value=atual;
+   }
+ });
+ renderArtilharia();renderDisciplina();
+ $("listaLocais").innerHTML=db.locais.length?db.locais.map(l=>`<div class="item"><strong>${esc(l.nome)}</strong><small>${esc(l.endereco||"-")} ${l.maps?"| Google Maps cadastrado":""}</small><div class="actions">${l.maps?`<button class="secondary" onclick="window.open('${esc(l.maps)}','_blank')">Abrir Maps</button>`:""}<button class="danger" onclick="excluirLocal('${l.id}')">Excluir</button></div></div>`).join(""):"<p class='empty'>Nenhum local cadastrado.</p>";
+
+ $("sumulaJogo").innerHTML='<option value="">Selecione...</option>'+db.jogos.map(j=>`<option value="${j.id}">${esc(j.categoria)} — ${esc(timeNome(j.casaTimeId))} x ${esc(timeNome(j.foraTimeId))} — ${esc(j.rodada||"Sem rodada")}</option>`).join("");
+ if($("mesarioJogoSelect")){
+   const atual=$("mesarioJogoSelect").value;
+   $("mesarioJogoSelect").innerHTML='<option value="">Selecione...</option>'+db.jogos.map(j=>`<option value="${j.id}">${esc(j.categoria)} — ${esc(timeNome(j.casaTimeId))} x ${esc(timeNome(j.foraTimeId))} — ${esc(j.rodada||"Sem rodada")}</option>`).join("");
+   if([...$("mesarioJogoSelect").options].some(o=>o.value===atual))$("mesarioJogoSelect").value=atual;
+ };
+ const selecionadoAtual=$("sumulaJogo").value;
+ if(selecionadoAtual && !db.jogos.some(j=>j.id===selecionadoAtual)){
+   $("sumulaJogo").value="";
+   $("sumulaArea").innerHTML="<p>Selecione um jogo.</p>";
+ }
+}
+renderTudo();
+</script>
+</body>
+</html>
