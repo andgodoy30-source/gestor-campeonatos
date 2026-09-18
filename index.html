@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.18 PWA</title>
+<title>Gestor de Campeonatos V0.19 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.18 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.19 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.18 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.19 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -1281,7 +1281,7 @@ function colunaSumula(j,timeId,atletas,lado){
     ${sel.length?sel.map(a=>`<div class="player-row">
       <input type="checkbox" checked>
       <input type="number" min="0" inputmode="numeric" value="${esc(numeroAtletaNoJogo(j,a.id))}" placeholder="Nº" onchange="atualizarNumeroAtleta('${a.id}',this.value,'${j.id}')">
-      <span>${esc(a.nome)}</span>
+      <span>${esc(a.nome)} <small>— Nasc.: ${esc(dataBR(a.nascimento))}</small></span>
     </div>`).join(""):"<p>Sem atletas cadastrados.</p>"}
    </div>
 
@@ -1572,15 +1572,16 @@ function gerarSumulaPDF(id){
    let yy=y+8;
    fill([226,233,240]);d.rect(x,yy,w,6,"F");
    txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(7.5);
-   d.text("Nº",x+7,yy+4,{align:"center"});d.text("ATLETA",x+12,yy+4);
+   d.text("Nº",x+7,yy+4,{align:"center"});d.text("ATLETA",x+12,yy+4);d.text("NASC.",x+w-5,yy+4,{align:"right"});
    yy+=6;
-   d.setFont(undefined,"normal");d.setFontSize(7.7);txt(texto);
+   d.setFont(undefined,"normal");d.setFontSize(7.2);txt(texto);
    const maxRows=Math.max(8,arr.length);
    for(let i=0;i<maxRows;i++){
      fill(i%2===0?[250,251,252]:[244,247,249]);stroke([218,225,232]);d.rect(x,yy,w,5.3,"FD");
      if(arr[i]){
        d.text(String(numeroAtletaNoJogo(j,arr[i].id)||"-"),x+7,yy+3.6,{align:"center"});
-       d.text(String(arr[i].nome).slice(0,38),x+12,yy+3.6);
+       d.text(String(arr[i].nome).slice(0,28),x+12,yy+3.6);
+       d.text(dataBR(arr[i].nascimento),x+w-5,yy+3.6,{align:"right"});
      }
      yy+=5.3
    }
@@ -1762,7 +1763,7 @@ function renderTudo(){
 }
 renderTudo();
 
-// PWA V0.18: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.19: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
