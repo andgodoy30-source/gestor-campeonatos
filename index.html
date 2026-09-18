@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.20 PWA</title>
+<title>Gestor de Campeonatos V0.21 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.20 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.21 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.20 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.21 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -1721,11 +1721,33 @@ function exportarBackup(){
  a.href=url;a.download=`backup-gestor-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url)
 }
 async function restaurarBackup(){
- const f=$("arquivoBackup").files[0];if(!f)return alert("Selecione um arquivo de backup.");
- if(!confirm("Isso substituirá os dados atuais deste navegador. Continuar?"))return;
- try{const novo=JSON.parse(await f.text());db=novo;localStorage.setItem(KEY,JSON.stringify(db));location.reload()}catch(e){alert("Arquivo de backup inválido.")}
+ const input=document.querySelector('input[type="file"][accept*="json"]')||document.getElementById("backupFile")||document.querySelector('input[type="file"]');
+ const f=input?.files?.[0];if(!f)return alert("Selecione o arquivo de backup.");
+ if(!confirm("Restaurar este backup? Os dados atuais deste aparelho serão substituídos."))return;
+ try{
+   // V0.21: leitura direta do arquivo, evitando cópias intermediárias grandes na memória.
+   const texto=await f.text();
+   let novo;
+   try{novo=JSON.parse(texto)}catch(e){return alert("O arquivo selecionado não é um backup JSON válido.");}
+   if(!novo||typeof novo!=="object")return alert("Backup inválido.");
+   // Validação mínima antes de substituir a base atual.
+   const campos=["equipes","atletas","jogos","inscricoes"];
+   if(!campos.some(k=>Array.isArray(novo[k])))return alert("O arquivo não possui a estrutura esperada do Gestor de Campeonatos.");
+   try{
+     localStorage.setItem(KEY,texto);
+   }catch(e){
+     if(e?.name==="QuotaExceededError"||String(e).toLowerCase().includes("quota"))
+       return alert("O navegador não possui espaço de armazenamento suficiente para restaurar este backup. Feche outras abas/aplicativos e tente novamente.");
+     throw e;
+   }
+   // Libera a string grande antes de reconstruir a interface.
+   novo=null;
+   setTimeout(()=>location.reload(),80);
+ }catch(e){
+   console.error(e);
+   alert("Não foi possível concluir a restauração neste aparelho. Feche outras abas/aplicativos e tente novamente.");
+ }
 }
-
 function renderTudo(){
  $("stEscolinhas").textContent=db.escolinhas.length;$("stTimes").textContent=db.times.length;$("stPendentes").textContent=db.inscricoes.filter(i=>i.status==="Pendente").length;$("stAtletas").textContent=db.atletas.length;$("stJogos").textContent=db.jogos.length;$("stEncerrados").textContent=db.jogos.filter(j=>j.status==="Encerrado").length;
  $("impTotal").textContent=db.inscricoes.length;$("impNovas").textContent=ultimaImportacao.novas;$("impIgnoradas").textContent=ultimaImportacao.ignoradas;
@@ -1785,7 +1807,7 @@ function renderTudo(){
 }
 renderTudo();
 
-// PWA V0.20: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.21: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
