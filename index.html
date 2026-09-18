@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.16 PWA</title>
+<title>Gestor de Campeonatos V0.17 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.16 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.17 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.16 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.17 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -873,7 +873,7 @@ function normalizaCategoria(raw){
  if(s.includes("SUB 14"))return "Sub-14";if(s.includes("SUB 08")||s.includes("SUB 8"))return "Sub-8";if(s.includes("SUB 07")||s.includes("SUB 7"))return "Sub-7 (revisar)";
  return String(raw||"").trim()
 }
-function chaveInscricao(x){const rg=normalizeDoc(x.rg);if(rg)return "RG:"+rg;return "NB:"+norm(x.nome)+"|"+x.nascimento}
+function chaveInscricao(x){const rg=normalizeDoc(x.rg),nome=norm(x.nome);if(rg)return "RGN:"+rg+"|"+nome;return "NB:"+nome+"|"+x.nascimento}
 function mapRow(row,nomeArquivo){
  const nome=getByHeader(row,["nome completo do jogador","nome completo do jogador (a)"]);if(!nome)return null;
  const equipe=getByHeader(row,["aluno(a) da escolinha","aluno da escolinha"]),rawCat=getByHeader(row,["categoria"]);
@@ -920,7 +920,7 @@ function aprovarInscricao(id){
  const cat=i.categoriaOficial||i.categoria;
  if(!categoriasCampeonato().includes(cat))return alert("Selecione a categoria oficial.");
  const t=db.times.find(t=>t.id===i.timeId);if(!t||t.categoria!==cat)return alert("Escolha o time participante correto.");
- const ja=db.atletas.some(a=>(a.inscricaoId===id)||(i.rg&&normalizeDoc(a.rg)===i.rg&&a.categoria===cat));
+ const ja=db.atletas.some(a=>(a.inscricaoId===id)||(i.rg&&normalizeDoc(a.rg)===i.rg&&norm(a.nome)===norm(i.nome)&&a.categoria===cat));
  if(!ja)db.atletas.push({id:uid(),inscricaoId:i.id,timeId:i.timeId,nome:i.nome,nascimento:i.nascimento,categoria:cat,rg:i.rg,responsavel:i.responsavel,telefone:i.telefone,origem:i.fonte});
  i.status="Aprovada";i.categoriaOficial=cat;save()
 }
@@ -1733,7 +1733,7 @@ function renderTudo(){
 }
 renderTudo();
 
-// PWA V0.16: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.17: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));

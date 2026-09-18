@@ -1,11 +1,12 @@
-const CACHE_NAME = 'gestor-campeonatos-v016';
+const CACHE_NAME = 'gestor-campeonatos-v017';
+const BASE = '/gestor-campeonatos/';
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-maskable-512.png'
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.webmanifest',
+  BASE + 'icons/icon-192.png',
+  BASE + 'icons/icon-512.png',
+  BASE + 'icons/icon-maskable-512.png'
 ];
 
 const EXTERNAL_LIBS = [
@@ -15,11 +16,7 @@ const EXTERNAL_LIBS = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
@@ -34,23 +31,21 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-
   if (event.request.mode === 'navigate') {
     event.respondWith((async () => {
       try {
         const response = await fetch(event.request);
         if (response && response.ok) {
           const cache = await caches.open(CACHE_NAME);
-          cache.put('/index.html', response.clone());
+          cache.put(BASE + 'index.html', response.clone());
         }
         return response;
       } catch (err) {
-        return (await caches.match('/index.html')) || (await caches.match('/'));
+        return (await caches.match(BASE + 'index.html')) || (await caches.match(BASE));
       }
     })());
     return;
   }
-
   event.respondWith((async () => {
     const cached = await caches.match(event.request);
     if (cached) return cached;
