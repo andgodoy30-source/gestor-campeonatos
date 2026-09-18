@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.17 PWA</title>
+<title>Gestor de Campeonatos V0.18 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.17 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.18 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.17 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.18 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -913,8 +913,37 @@ function csvToObjects(text){
  const h=parse(lines[0]);return lines.slice(1).map(l=>{const v=parse(l),o={};h.forEach((k,i)=>o[k]=v[i]||"");return o})
 }
 function salvarFontes(){db.fontes={url1:$("sheetUrl1").value.trim(),url2:$("sheetUrl2").value.trim()};save();alert("Links salvos.")}
-function setCategoriaInscricao(id,cat){const i=db.inscricoes.find(x=>x.id===id);if(i){i.categoriaOficial=cat;i.timeId="";autoVincularInscricao(i);save()}}
-function setTimeInscricao(id,timeId){const i=db.inscricoes.find(x=>x.id===id);if(i){i.timeId=timeId;save()}}
+function atletaDaInscricao(id){return db.atletas.find(a=>a.inscricaoId===id)}
+function atletaTemHistorico(a){
+ if(!a)return false;
+ return db.jogos.some(j=>(j.gols||[]).some(g=>g.atletaId===a.id)||(j.cartoes||[]).some(c=>c.atletaId===a.id)||(j.numeracaoAtletas&&Object.prototype.hasOwnProperty.call(j.numeracaoAtletas,a.id)));
+}
+function sincronizarAtletaInscricao(i){
+ const a=atletaDaInscricao(i.id);if(!a||i.status!=="Aprovada")return;
+ a.nome=i.nome;a.nascimento=i.nascimento;a.categoria=i.categoriaOficial||i.categoria;a.rg=i.rg;a.responsavel=i.responsavel;a.telefone=i.telefone;a.timeId=i.timeId;a.origem=i.fonte;
+}
+function setCategoriaInscricao(id,cat){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
+ const anterior=i.categoriaOficial||i.categoria||"";
+ if(i.status==="Aprovada"&&anterior&&cat&&anterior!==cat&&!confirm(`Este atleta está atualmente em ${anterior}. Deseja transferi-lo para ${cat}?`)){render();return}
+ i.categoriaOficial=cat;i.timeId="";autoVincularInscricao(i);sincronizarAtletaInscricao(i);save()
+}
+function setTimeInscricao(id,timeId){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;const anterior=i.timeId;
+ if(i.status==="Aprovada"&&anterior&&timeId&&anterior!==timeId&&!confirm(`Este atleta está atualmente em ${timeNome(anterior)}. Deseja transferi-lo para ${timeNome(timeId)}?`)){render();return}
+ i.timeId=timeId;sincronizarAtletaInscricao(i);save()
+}
+function retirarAtletaDoElencoPorInscricao(i){
+ const a=atletaDaInscricao(i.id);if(!a)return true;
+ if(atletaTemHistorico(a)){alert("Este atleta já possui vínculo com jogo/súmula. O cadastro será preservado para não quebrar o histórico.");return false}
+ db.atletas=db.atletas.filter(x=>x.id!==a.id);return true;
+}
+function excluirInscricao(id){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;const a=atletaDaInscricao(id);
+ if(a&&atletaTemHistorico(a))return alert("Esta inscrição não pode ser excluída porque o atleta já possui vínculo com jogo/súmula.");
+ if(!confirm(`Excluir definitivamente a inscrição de ${i.nome}?${a?" O atleta também será removido da lista de atletas.":""}`))return;
+ if(a)db.atletas=db.atletas.filter(x=>x.id!==a.id);db.inscricoes=db.inscricoes.filter(x=>x.id!==id);save()
+}
 function aprovarInscricao(id){
  const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
  const cat=i.categoriaOficial||i.categoria;
@@ -924,8 +953,8 @@ function aprovarInscricao(id){
  if(!ja)db.atletas.push({id:uid(),inscricaoId:i.id,timeId:i.timeId,nome:i.nome,nascimento:i.nascimento,categoria:cat,rg:i.rg,responsavel:i.responsavel,telefone:i.telefone,origem:i.fonte});
  i.status="Aprovada";i.categoriaOficial=cat;save()
 }
-function recusarInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){i.status="Recusada";save()}}
-function reabrirInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){i.status="Pendente";save()}}
+function recusarInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){retirarAtletaDoElencoPorInscricao(i);i.status="Recusada";save()}}
+function reabrirInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){retirarAtletaDoElencoPorInscricao(i);i.status="Pendente";save()}}
 function detalhesInscricao(id){
  const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
  alert(`ATLETA: ${i.nome}\nRG: ${i.rg||"-"}\nNascimento: ${i.nascimento||"-"}\nCategoria recebida: ${i.categoria||"-"}\nCategoria oficial: ${i.categoriaOficial||"-"}\nTime: ${timeNome(i.timeId)}\nResponsável: ${i.responsavel||"-"}\nTelefone: ${i.telefone||"-"}\nEquipe informada no Forms: ${i.equipeInformada||"-"}\nFonte: ${i.fonte}`)
@@ -951,7 +980,7 @@ function renderInscricoes(){
       <div><label>Categoria oficial</label><select onchange="setCategoriaInscricao('${i.id}',this.value)"><option value="">Selecione...</option>${categoriasCampeonato().map(c=>`<option value="${esc(c)}" ${cat===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
       <div><label>Time participante</label><select onchange="setTimeInscricao('${i.id}',this.value)"><option value="">Selecione...</option>${times.map(t=>`<option value="${t.id}" ${i.timeId===t.id?"selected":""}>${esc(t.nomeTabela)}</option>`).join("")}</select></div>
     </div>
-    <div class="actions"><button class="light" onclick="detalhesInscricao('${i.id}')">Ver ficha</button>${i.status!=="Aprovada"?`<button class="primary" onclick="aprovarInscricao('${i.id}')">Aprovar</button>`:""}${i.status!=="Recusada"?`<button class="danger" onclick="recusarInscricao('${i.id}')">Recusar</button>`:""}${i.status!=="Pendente"?`<button class="amber" onclick="reabrirInscricao('${i.id}')">Reabrir</button>`:""}</div>
+    <div class="actions"><button class="light" onclick="detalhesInscricao('${i.id}')">Ver ficha</button>${i.status!=="Aprovada"?`<button class="primary" onclick="aprovarInscricao('${i.id}')">Aprovar</button>`:""}${i.status!=="Recusada"?`<button class="danger" onclick="recusarInscricao('${i.id}')">Recusar</button>`:""}${i.status!=="Pendente"?`<button class="amber" onclick="reabrirInscricao('${i.id}')">Reabrir</button>`:""}<button class="danger" onclick="excluirInscricao('${i.id}')">Excluir inscrição</button></div>
   </div>`
  }).join(""):"<p class='empty'>Nenhuma inscrição encontrada.</p>"
 }
@@ -1733,7 +1762,7 @@ function renderTudo(){
 }
 renderTudo();
 
-// PWA V0.17: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.18: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));

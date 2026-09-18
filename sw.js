@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestor-campeonatos-v017';
+const CACHE_NAME = 'gestor-campeonatos-v018';
 const BASE = '/gestor-campeonatos/';
 const APP_SHELL = [
   BASE,
