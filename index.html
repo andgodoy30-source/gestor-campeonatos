@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.23 PWA</title>
+<title>Gestor de Campeonatos V0.24 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.23 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.24 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.23 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.24 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -470,25 +470,6 @@ function consolidarInscricoesDuplicadas(){
  }
  if(removidas)db.inscricoes=unicas;
  return removidas;
-}
-
-function editarGolSumulaGestor(jogoId,indice){
- const j=db.jogos.find(x=>x.id===jogoId);if(!j||!Array.isArray(j.gols)||!j.gols[indice])return;
- const g=j.gols[indice];
- const timeId=g.timeId;
- const atletas=db.atletas.filter(a=>a.timeId===timeId&&a.categoria===j.categoria);
- const escolha=prompt("Digite GC para Gol Contra ou o ID do atleta:\n\n"+atletas.map(a=>`${a.id} | #${numeroAtletaNoJogo(j,a.id)||""} ${a.nome}`).join("\n"),g.golContra?"GC":(g.atletaId||""));
- if(escolha===null)return;
- if(escolha.trim().toUpperCase()==="GC"){g.golContra=true;g.atletaId=null;g.atleta="Gol contra";g.numero="";}
- else{
-   const a=atletas.find(x=>String(x.id)===escolha.trim());if(!a)return alert("Atleta não encontrado.");
-   g.golContra=false;g.atletaId=a.id;g.atleta=a.nome;g.numero=numeroAtletaNoJogo(j,a.id)||"";
- }
- const min=prompt("Minuto do gol:",String(g.minuto||1));if(min===null)return;
- const n=parseInt(min,10);if(!Number.isFinite(n)||n<1)return alert("Minuto inválido.");g.minuto=n;
- const per=prompt("Período: 1T ou 2T",g.periodo||"1T");if(per===null)return;
- const pp=per.trim().toUpperCase();if(pp!=="1T"&&pp!=="2T")return alert("Período inválido.");g.periodo=pp;
- save();render();
 }
 function save(){salvarSemRender();renderTudo()}
 
@@ -1369,10 +1350,11 @@ function colunaSumula(j,timeId,atletas,lado){
     <select id="golAtleta_${lado}">
       <option value="">Selecione...</option>
       ${sel.map(a=>`<option value="${a.id}">${atletaRotulo(a,j)}</option>`).join("")}
+      <option value="__GOL_CONTRA__">⚽ GOL CONTRA</option>
     </select>
     <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
     <button class="btn secondary" onclick="registrarGolTime('${j.id}','${lado}')">Adicionar gol</button>
-    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>#${esc(g.numero||"?")} — ${g.golContra?"GOL CONTRA":esc(g.atleta)}</strong><small>${esc(g.minuto)}' ${g.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
+    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>${g.golContra?"⚽ GOL CONTRA":("#"+esc(g.golContra?"":(g.numero||"?"))+" — "+esc(g.atleta))}</strong><small>${esc(g.minuto)}' ${g.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="btn secondary" onclick="editarGolGestor('${j.id}',${idx},'${lado}')">Editar</button><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
    </div>
 
    <div class="event-box">
@@ -1386,11 +1368,49 @@ function colunaSumula(j,timeId,atletas,lado){
     <select id="cartaoTipo_${lado}"><option>Amarelo</option><option>Vermelho</option></select>
     <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
     <button class="btn secondary" onclick="registrarCartaoTime('${j.id}','${lado}')">Adicionar cartão</button>
-    <div class="event-list">${cartoes.length?cartoes.map(c=>{const idx=j.cartoes.indexOf(c);return `<div class="item"><strong>${esc(c.tipo)} — #${esc(c.numero||"?")} — ${esc(c.atleta)}</strong><small>${esc(c.minuto)}' ${c.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="danger" onclick="excluirCartao('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum cartão registrado.</span>"}</div>
+    <div class="event-list">${cartoes.length?cartoes.map(c=>{const idx=j.cartoes.indexOf(c);return `<div class="item"><strong>${esc(c.tipo)} — #${esc(c.numero||"?")} — ${esc(c.atleta)}</strong><small>${esc(c.minuto)}' ${c.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="btn secondary" onclick="editarCartaoGestor('${j.id}',${idx},'${lado}')">Editar</button><button class="danger" onclick="excluirCartao('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum cartão registrado.</span>"}</div>
    </div>
  </div>`
 }
 
+
+function editarGolGestor(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),g=j?.gols?.[index];if(!j||!g)return;
+ const beneficiado=lado==="casa"?j.casaTimeId:j.foraTimeId;
+ const atletas=db.atletas.filter(a=>a.timeId===beneficiado&&a.categoria===j.categoria);
+ let lista=atletas.map(a=>`${a.id} | #${numeroAtletaNoJogo(j,a.id)||""} ${a.nome}`).join("\n");
+ let escolha=prompt("Digite GC para Gol Contra ou o ID do atleta:\n\n"+lista,g.golContra?"GC":(g.atletaId||""));
+ if(escolha===null)return; escolha=escolha.trim();
+ if(escolha.toUpperCase()==="GC"){
+   g.golContra=true;g.atletaId=null;g.atleta="Gol contra";g.numero="";g.timeId=beneficiado;
+ }else{
+   const a=atletas.find(x=>String(x.id)===escolha);if(!a)return alert("Atleta não encontrado nesta equipe.");
+   const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");
+   g.golContra=false;g.atletaId=a.id;g.atleta=a.nome;g.numero=numero;g.timeId=beneficiado;
+ }
+ let min=prompt("Minuto do gol:",String(g.minuto||1));if(min===null)return;
+ min=parseInt(min,10);if(!Number.isFinite(min)||min<1)return alert("Minuto inválido.");g.minuto=min;
+ let per=prompt("Período: 1T ou 2T",g.periodo||"1T");if(per===null)return;
+ per=per.trim().toUpperCase();if(per!=="1T"&&per!=="2T")return alert("Período inválido.");g.periodo=per;
+ recalcularPlacarPorGols(j);salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();atualizarPreviewSumula(jogoId);
+}
+function editarCartaoGestor(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),c=j?.cartoes?.[index];if(!j||!c)return;
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId;
+ const atletas=db.atletas.filter(a=>a.timeId===tid&&a.categoria===j.categoria);
+ let lista=atletas.map(a=>`${a.id} | #${numeroAtletaNoJogo(j,a.id)||""} ${a.nome}`).join("\n");
+ let escolha=prompt("Digite o ID do atleta:\n\n"+lista,c.atletaId||"");if(escolha===null)return;
+ const a=atletas.find(x=>String(x.id)===escolha.trim());if(!a)return alert("Atleta não encontrado nesta equipe.");
+ const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");
+ let tipo=prompt("Tipo do cartão: Amarelo ou Vermelho",c.tipo||"Amarelo");if(tipo===null)return;
+ tipo=tipo.trim().toLowerCase();c.tipo=tipo.startsWith("v")?"Vermelho":"Amarelo";
+ c.atletaId=a.id;c.atleta=a.nome;c.numero=numero;c.timeId=tid;
+ let min=prompt("Minuto do cartão:",String(c.minuto||1));if(min===null)return;
+ min=parseInt(min,10);if(!Number.isFinite(min)||min<1)return alert("Minuto inválido.");c.minuto=min;
+ let per=prompt("Período: 1T ou 2T",c.periodo||"1T");if(per===null)return;
+ per=per.trim().toUpperCase();if(per!=="1T"&&per!=="2T")return alert("Período inválido.");c.periodo=per;
+ salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();atualizarPreviewSumula(jogoId);
+}
 function excluirGol(jogoId,index){
  const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
  if(!confirm("Excluir este gol registrado?"))return;
@@ -1563,11 +1583,18 @@ function recalcularPlacarPorGols(j){
 }
 
 function registrarGolTime(jogoId,lado){
- const j=db.jogos.find(x=>x.id===jogoId),sel=$(`golAtleta_${lado}`),a=db.atletas.find(x=>x.id===sel.value);
- if(!a)return alert("Selecione o número do atleta.");
- const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
+ const j=db.jogos.find(x=>x.id===jogoId),sel=$(`golAtleta_${lado}`);
+ if(!j||!sel)return;
  const min=minutoAtualEvento(j);
- j.gols.push({atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,minuto:min,periodo:j.periodoAtual||"1T"});
+ if(sel.value==="__GOL_CONTRA__"){
+   const beneficiado=lado==="casa"?j.casaTimeId:j.foraTimeId;
+   j.gols.push({golContra:true,atletaId:null,atleta:"Gol contra",numero:"",timeId:beneficiado,minuto:min,periodo:j.periodoAtual||"1T"});
+ }else{
+   const a=db.atletas.find(x=>x.id===sel.value);
+   if(!a)return alert("Selecione o atleta ou GOL CONTRA.");
+   const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
+   j.gols.push({golContra:false,atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,minuto:min,periodo:j.periodoAtual||"1T"});
+ }
  recalcularPlacarPorGols(j);
  salvarSemRender();
  $("sumulaJogo").value=jogoId;
@@ -1867,7 +1894,7 @@ function renderTudo(){
 if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.23: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.24: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
