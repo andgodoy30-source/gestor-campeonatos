@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.25 PWA</title>
+<title>Gestor de Campeonatos V0.26 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -142,11 +142,19 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<style>
+.modal-edit-bg{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-edit{background:#fff;width:min(520px,100%);max-height:92vh;overflow:auto;border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);color:#17212b}
+.modal-edit h3{margin:0 0 14px}.modal-edit label{display:block;font-weight:700;margin-top:10px}
+.modal-edit select,.modal-edit input,.modal-edit textarea{width:100%;box-sizing:border-box;margin-top:5px}
+.modal-edit .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+</style>
 </head>
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.25 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.26 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +434,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.25 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.26 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -1111,11 +1119,14 @@ function classificacaoDaCategoria(cat){
    const a=mapa[j.casaTimeId],b=mapa[j.foraTimeId];if(!a||!b)return;
    const gc=Number(j.placarCasa)||0,gf=Number(j.placarFora)||0;
    a.J++;b.J++;a.GP+=gc;a.GC+=gf;b.GP+=gf;b.GC+=gc;
-   if(gc>gf){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
+   const adm=j.decisaoAdministrativa?.vencedorTimeId;
+   if(adm===j.casaTimeId){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
+   else if(adm===j.foraTimeId){b.V++;a.D++;b.PTS+=(db.campeonato?.pontosVitoria||3)}
+   else if(gc>gf){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
    else if(gf>gc){b.V++;a.D++;b.PTS+=(db.campeonato?.pontosVitoria||3)}
    else{a.E++;b.E++;a.PTS++;b.PTS++}
  });
- Object.values(mapa).forEach(x=>{x.ajusteAdministrativo=ajusteAdministrativoTime(x.timeId,cat);x.PTS+=x.ajusteAdministrativo;x.SG=x.GP-x.GC});
+ Object.values(mapa).forEach(x=>x.SG=x.GP-x.GC);
  const criterio=$("classDesempate")?.value||"saldo";
  return Object.values(mapa).sort((a,b)=>{
    if(b.PTS!==a.PTS)return b.PTS-a.PTS;
@@ -1138,8 +1149,8 @@ function renderClassificacao(){
  const jogosEnc=db.jogos.filter(j=>j.categoria===cat&&j.status==="Encerrado").length;
  $("classResumo").textContent=`${cat} • ${arr.length} time(s) • ${jogosEnc} jogo(s) encerrado(s)`;
  $("classificacaoArea").innerHTML=arr.length?`<table class="class-table">
-  <thead><tr><th>Pos.</th><th style="text-align:left">Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>ADM</th><th>PTS</th></tr></thead>
-  <tbody>${arr.map((r,i)=>`<tr><td class="class-pos">${i+1}º</td><td class="team">${timeLogoClass(r.timeId)?`<img class="class-logo" src="${timeLogoClass(r.timeId)}">`:""}${esc(r.time)}</td><td>${r.J}</td><td>${r.V}</td><td>${r.E}</td><td>${r.D}</td><td>${r.GP}</td><td>${r.GC}</td><td>${r.SG>0?"+":""}${r.SG}</td><td>${r.ajusteAdministrativo||0}</td><td><strong>${r.PTS}</strong></td></tr>`).join("")}</tbody>
+  <thead><tr><th>Pos.</th><th style="text-align:left">Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>PTS</th></tr></thead>
+  <tbody>${arr.map((r,i)=>`<tr><td class="class-pos">${i+1}º</td><td class="team">${timeLogoClass(r.timeId)?`<img class="class-logo" src="${timeLogoClass(r.timeId)}">`:""}${esc(r.time)}</td><td>${r.J}</td><td>${r.V}</td><td>${r.E}</td><td>${r.D}</td><td>${r.GP}</td><td>${r.GC}</td><td>${r.SG>0?"+":""}${r.SG}</td><td><strong>${r.PTS}</strong></td></tr>`).join("")}</tbody>
  </table>`:"<p class='empty'>Nenhum time cadastrado nesta categoria.</p>"
 }
 function gerarClassificacaoPDF(){
@@ -1203,7 +1214,7 @@ function montarPacoteMesario(j){
      placarCasa:j.placarCasa||0,placarFora:j.placarFora||0,
      gols:j.gols||[],cartoes:j.cartoes||[],observacoes:j.observacoes||"",
      responsaveisSumula:j.responsaveisSumula||{arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""},
-     ocorrenciasAdministrativas:j.ocorrenciasAdministrativas||[],
+     decisaoAdministrativa:j.decisaoAdministrativa||null,
      periodoAtual:j.periodoAtual||"1T",cronometros:j.cronometros||null,primeiroTempoEncerrado:!!j.primeiroTempoEncerrado
    }
  }
@@ -1225,7 +1236,7 @@ async function importarRetornoMesario(){
  const r=pacote.jogo;
  j.placarCasa=Number(r.placarCasa)||0;j.placarFora=Number(r.placarFora)||0;
  j.gols=Array.isArray(r.gols)?r.gols:[];j.cartoes=Array.isArray(r.cartoes)?r.cartoes:[];
- j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};j.ocorrenciasAdministrativas=Array.isArray(r.ocorrenciasAdministrativas)?r.ocorrenciasAdministrativas:[];j.periodoAtual=r.periodoAtual||j.periodoAtual||"1T";if(r.cronometros)j.cronometros=r.cronometros;j.primeiroTempoEncerrado=!!r.primeiroTempoEncerrado;
+ j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};j.decisaoAdministrativa=r.decisaoAdministrativa||null;j.periodoAtual=r.periodoAtual||j.periodoAtual||"1T";if(r.cronometros)j.cronometros=r.cronometros;j.primeiroTempoEncerrado=!!r.primeiroTempoEncerrado;
  garantirNumeracaoJogo(j);
  [...(r.casa?.atletas||[]),...(r.fora?.atletas||[])].forEach(a=>{const n=String(a.numero||"").trim();if(n)j.numeracaoAtletas[a.id]=n;else delete j.numeracaoAtletas[a.id]});
  j.status=r.status||"Encerrado";j.encerradoEm=r.encerradoEm||new Date().toISOString();
@@ -1375,42 +1386,34 @@ function colunaSumula(j,timeId,atletas,lado){
 }
 
 
+
 function editarGolGestor(jogoId,index,lado){
  const j=db.jogos.find(x=>x.id===jogoId),g=j?.gols?.[index];if(!j||!g)return;
- const beneficiado=lado==="casa"?j.casaTimeId:j.foraTimeId;
- const atletas=db.atletas.filter(a=>a.timeId===beneficiado&&a.categoria===j.categoria);
- let lista=atletas.map(a=>`${a.id} | #${numeroAtletaNoJogo(j,a.id)||""} ${a.nome}`).join("\n");
- let escolha=prompt("Digite GC para Gol Contra ou o ID do atleta:\n\n"+lista,g.golContra?"GC":(g.atletaId||""));
- if(escolha===null)return; escolha=escolha.trim();
- if(escolha.toUpperCase()==="GC"){
-   g.golContra=true;g.atletaId=null;g.atleta="Gol contra";g.numero="";g.timeId=beneficiado;
- }else{
-   const a=atletas.find(x=>String(x.id)===escolha);if(!a)return alert("Atleta não encontrado nesta equipe.");
-   const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");
-   g.golContra=false;g.atletaId=a.id;g.atleta=a.nome;g.numero=numero;g.timeId=beneficiado;
- }
- let min=prompt("Minuto do gol:",String(g.minuto||1));if(min===null)return;
- min=parseInt(min,10);if(!Number.isFinite(min)||min<1)return alert("Minuto inválido.");g.minuto=min;
- let per=prompt("Período: 1T ou 2T",g.periodo||"1T");if(per===null)return;
- per=per.trim().toUpperCase();if(per!=="1T"&&per!=="2T")return alert("Período inválido.");g.periodo=per;
- recalcularPlacarPorGols(j);salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();atualizarPreviewSumula(jogoId);
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId;
+ const atletas=db.atletas.filter(a=>a.timeId===tid&&a.categoria===j.categoria);
+ const opts=atletas.map(a=>`<option value="${a.id}" ${!g.golContra&&g.atletaId===a.id?"selected":""}>#${esc(numeroAtletaNoJogo(j,a.id)||"?")} — ${esc(a.nome)}</option>`).join("");
+ abrirModalEdicao(`<h3>Editar gol</h3><label>Atleta</label><select id="editGolAtleta"><option value="__GOL_CONTRA__" ${g.golContra?"selected":""}>⚽ GOL CONTRA</option>${opts}</select><label>Minuto</label><input id="editGolMin" type="number" min="1" value="${esc(g.minuto||1)}"><label>Tempo</label><select id="editGolPeriodo"><option value="1T" ${g.periodo!=="2T"?"selected":""}>1º Tempo</option><option value="2T" ${g.periodo==="2T"?"selected":""}>2º Tempo</option></select><div class="actions"><button class="btn light" onclick="fecharModalEdicao()">Cancelar</button><button class="btn primary" onclick="salvarEdicaoGol('${j.id}',${index},'${lado}')">Salvar</button></div>`);
+}
+function salvarEdicaoGol(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),g=j?.gols?.[index];if(!j||!g)return;
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId,v=$("editGolAtleta").value;
+ if(v==="__GOL_CONTRA__"){g.golContra=true;g.atletaId=null;g.atleta="Gol contra";g.numero="";g.timeId=tid}
+ else{const a=db.atletas.find(x=>x.id===v);if(!a)return alert("Selecione um atleta.");const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");g.golContra=false;g.atletaId=a.id;g.atleta=a.nome;g.numero=numero;g.timeId=tid}
+ g.minuto=Math.max(1,parseInt($("editGolMin").value,10)||1);g.periodo=$("editGolPeriodo").value;
+ recalcularPlacarPorGols(j);salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();
 }
 function editarCartaoGestor(jogoId,index,lado){
  const j=db.jogos.find(x=>x.id===jogoId),c=j?.cartoes?.[index];if(!j||!c)return;
- const tid=lado==="casa"?j.casaTimeId:j.foraTimeId;
- const atletas=db.atletas.filter(a=>a.timeId===tid&&a.categoria===j.categoria);
- let lista=atletas.map(a=>`${a.id} | #${numeroAtletaNoJogo(j,a.id)||""} ${a.nome}`).join("\n");
- let escolha=prompt("Digite o ID do atleta:\n\n"+lista,c.atletaId||"");if(escolha===null)return;
- const a=atletas.find(x=>String(x.id)===escolha.trim());if(!a)return alert("Atleta não encontrado nesta equipe.");
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId,atletas=db.atletas.filter(a=>a.timeId===tid&&a.categoria===j.categoria);
+ const opts=atletas.map(a=>`<option value="${a.id}" ${c.atletaId===a.id?"selected":""}>#${esc(numeroAtletaNoJogo(j,a.id)||"?")} — ${esc(a.nome)}</option>`).join("");
+ abrirModalEdicao(`<h3>Editar cartão</h3><label>Atleta</label><select id="editCartaoAtleta">${opts}</select><label>Cartão</label><select id="editCartaoTipo"><option ${c.tipo==="Amarelo"?"selected":""}>Amarelo</option><option ${c.tipo==="Azul"?"selected":""}>Azul</option><option ${c.tipo==="Vermelho"?"selected":""}>Vermelho</option></select><label>Minuto</label><input id="editCartaoMin" type="number" min="1" value="${esc(c.minuto||1)}"><label>Tempo</label><select id="editCartaoPeriodo"><option value="1T" ${c.periodo!=="2T"?"selected":""}>1º Tempo</option><option value="2T" ${c.periodo==="2T"?"selected":""}>2º Tempo</option></select><div class="actions"><button class="btn light" onclick="fecharModalEdicao()">Cancelar</button><button class="btn primary" onclick="salvarEdicaoCartao('${j.id}',${index},'${lado}')">Salvar</button></div>`);
+}
+function salvarEdicaoCartao(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),c=j?.cartoes?.[index];if(!j||!c)return;
+ const a=db.atletas.find(x=>x.id===$("editCartaoAtleta").value);if(!a)return alert("Selecione um atleta.");
  const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");
- let tipo=prompt("Tipo do cartão: Amarelo ou Vermelho",c.tipo||"Amarelo");if(tipo===null)return;
- tipo=tipo.trim().toLowerCase();c.tipo=tipo.startsWith("v")?"Vermelho":"Amarelo";
- c.atletaId=a.id;c.atleta=a.nome;c.numero=numero;c.timeId=tid;
- let min=prompt("Minuto do cartão:",String(c.minuto||1));if(min===null)return;
- min=parseInt(min,10);if(!Number.isFinite(min)||min<1)return alert("Minuto inválido.");c.minuto=min;
- let per=prompt("Período: 1T ou 2T",c.periodo||"1T");if(per===null)return;
- per=per.trim().toUpperCase();if(per!=="1T"&&per!=="2T")return alert("Período inválido.");c.periodo=per;
- salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();atualizarPreviewSumula(jogoId);
+ c.atletaId=a.id;c.atleta=a.nome;c.numero=numero;c.timeId=lado==="casa"?j.casaTimeId:j.foraTimeId;c.tipo=$("editCartaoTipo").value;c.minuto=Math.max(1,parseInt($("editCartaoMin").value,10)||1);c.periodo=$("editCartaoPeriodo").value;
+ salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();
 }
 function excluirGol(jogoId,index){
  const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
@@ -1554,7 +1557,7 @@ function carregarSumula(){
      ${colunaSumula(j,j.casaTimeId,ac,"casa")}
      ${colunaSumula(j,j.foraTimeId,af,"fora")}
    </div>
-   ${painelOcorrenciasAdministrativas(j)}
+   ${painelDecisaoAdministrativa(j)}
    <label>Observações gerais da partida</label>
    <textarea id="sumObservacoes">${esc(j.observacoes||"")}</textarea>
    <div class="grid">
@@ -1580,28 +1583,34 @@ function carregarSumula(){
 }
 
 
-function ocorrenciasAdministrativas(j){if(!Array.isArray(j.ocorrenciasAdministrativas))j.ocorrenciasAdministrativas=[];return j.ocorrenciasAdministrativas}
-function ajusteAdministrativoTime(timeId,categoria){let n=0;(db.jogos||[]).filter(j=>j.categoria===categoria).forEach(j=>ocorrenciasAdministrativas(j).forEach(o=>{if(o.timeId===timeId)n+=Number(o.ajustePontos)||0}));return n}
-function registrarOcorrenciaAdministrativa(jogoId){
+function decisaoAdministrativa(j){return j.decisaoAdministrativa||null}
+function abrirDecisaoAdministrativa(jogoId){
  const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
- let lado=prompt("Equipe envolvida: CASA ou FORA","CASA");if(lado===null)return;lado=lado.trim().toUpperCase();if(!["CASA","FORA"].includes(lado))return alert("Digite CASA ou FORA.");
- const timeId=lado==="CASA"?j.casaTimeId:j.foraTimeId;
- let motivo=prompt("Motivo:","Conduta inadequada da torcida");if(motivo===null||!motivo.trim())return;
- let descricao=prompt("Descrição / decisão:","Partida encerrada após a terceira interrupção por ofensas da torcida.");if(descricao===null)return;
- const aplicar=confirm("Aplicar perda de 3 pontos na classificação?\n\nO placar de campo permanecerá inalterado.");
- ocorrenciasAdministrativas(j).push({id:"oc_"+Date.now(),timeId,motivo:motivo.trim(),descricao:descricao.trim(),ajustePontos:aplicar?-3:0,criadoEm:new Date().toISOString()});
- salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
+ const d=decisaoAdministrativa(j)||{};
+ const casa=timeNome(j.casaTimeId),fora=timeNome(j.foraTimeId);
+ abrirModalEdicao(`<h3>Decisão administrativa</h3>
+ <p class="empty">O placar e os gols da partida permanecem inalterados. Esta decisão altera apenas V/E/D e pontos da classificação.</p>
+ <label>Equipe declarada vencedora</label><select id="admVencedor"><option value="">Selecione...</option><option value="${j.casaTimeId}" ${d.vencedorTimeId===j.casaTimeId?"selected":""}>${esc(casa)}</option><option value="${j.foraTimeId}" ${d.vencedorTimeId===j.foraTimeId?"selected":""}>${esc(fora)}</option></select>
+ <label>Motivo</label><input id="admMotivo" value="${esc(d.motivo||"Conduta inadequada da torcida")}">
+ <label>Descrição / decisão</label><textarea id="admDescricao">${esc(d.descricao||"")}</textarea>
+ <div class="actions">${d.vencedorTimeId?`<button class="btn danger" onclick="removerDecisaoAdministrativa('${j.id}')">Remover decisão</button>`:""}<button class="btn light" onclick="fecharModalEdicao()">Cancelar</button><button class="btn primary" onclick="salvarDecisaoAdministrativa('${j.id}')">Salvar</button></div>`);
 }
-function editarOcorrenciaAdministrativa(jogoId,i){
- const j=db.jogos.find(x=>x.id===jogoId),o=ocorrenciasAdministrativas(j)[i];if(!o)return;
- let m=prompt("Motivo:",o.motivo||"");if(m===null)return;let d=prompt("Descrição / decisão:",o.descricao||"");if(d===null)return;
- let a=prompt("Ajuste de pontos:",String(Number(o.ajustePontos)||0));if(a===null)return;a=Number(String(a).replace(",","."));if(!Number.isFinite(a))return alert("Valor inválido.");
- o.motivo=m.trim();o.descricao=d.trim();o.ajustePontos=a;salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
+function salvarDecisaoAdministrativa(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ const vencedor=$("admVencedor").value;if(!vencedor)return alert("Selecione a equipe declarada vencedora.");
+ j.decisaoAdministrativa={vencedorTimeId:vencedor,motivo:$("admMotivo").value.trim(),descricao:$("admDescricao").value.trim(),criadoEm:j.decisaoAdministrativa?.criadoEm||new Date().toISOString()};
+ salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
 }
-function excluirOcorrenciaAdministrativa(jogoId,i){const j=db.jogos.find(x=>x.id===jogoId);if(!j||!confirm("Excluir esta ocorrência e seu ajuste de pontos?"))return;ocorrenciasAdministrativas(j).splice(i,1);salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao()}
-function painelOcorrenciasAdministrativas(j){
- const os=ocorrenciasAdministrativas(j);return `<div class="card" style="margin-top:12px"><h3>Ocorrências / Decisão administrativa</h3><p class="empty">O placar de campo não é alterado por penalidades administrativas.</p><button class="btn secondary" onclick="registrarOcorrenciaAdministrativa('${j.id}')">+ Registrar ocorrência</button><div class="event-list">${os.length?os.map((o,i)=>`<div class="item"><strong>${esc(timeNome(o.timeId))} — ${esc(o.motivo||"Ocorrência")}</strong><small>${esc(o.descricao||"")}${Number(o.ajustePontos)?` • Ajuste: ${o.ajustePontos} ponto(s)`:''}</small><div class="actions"><button class="btn secondary" onclick="editarOcorrenciaAdministrativa('${j.id}',${i})">Editar</button><button class="danger" onclick="excluirOcorrenciaAdministrativa('${j.id}',${i})">Excluir</button></div></div>`).join(""):"<span class='empty'>Nenhuma ocorrência registrada.</span>"}</div></div>`
+function removerDecisaoAdministrativa(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j||!confirm("Remover a decisão administrativa desta partida?"))return;
+ delete j.decisaoAdministrativa;salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
 }
+function painelDecisaoAdministrativa(j){
+ const d=decisaoAdministrativa(j);
+ return `<div class="card" style="margin-top:12px"><h3>Decisão administrativa</h3>${d&&d.vencedorTimeId?`<div class="notice"><strong>Vitória administrativa: ${esc(timeNome(d.vencedorTimeId))}</strong><br>${esc(d.motivo||"")}${d.descricao?`<br>${esc(d.descricao)}`:""}<br><small>Placar e gols de campo preservados.</small></div>`:`<p class="empty">Nenhuma decisão administrativa registrada.</p>`}<button class="btn secondary" onclick="abrirDecisaoAdministrativa('${j.id}')">${d&&d.vencedorTimeId?"Editar decisão":"+ Registrar decisão"}</button></div>`;
+}
+function abrirModalEdicao(html){fecharModalEdicao();const bg=document.createElement("div");bg.id="modalEdicao";bg.className="modal-edit-bg";bg.innerHTML=`<div class="modal-edit">${html}</div>`;bg.addEventListener("click",e=>{if(e.target===bg)fecharModalEdicao()});document.body.appendChild(bg)}
+function fecharModalEdicao(){document.getElementById("modalEdicao")?.remove()}
 function recalcularPlacarPorGols(j){
  j.placarCasa=j.gols.filter(g=>g.timeId===j.casaTimeId).length;
  j.placarFora=j.gols.filter(g=>g.timeId===j.foraTimeId).length;
@@ -1919,7 +1928,7 @@ function renderTudo(){
 if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.25: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.26: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
