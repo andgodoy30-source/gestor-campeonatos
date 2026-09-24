@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.22 PWA</title>
+<title>Gestor de Campeonatos V0.23 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.22 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.23 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.22 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.23 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -470,6 +470,25 @@ function consolidarInscricoesDuplicadas(){
  }
  if(removidas)db.inscricoes=unicas;
  return removidas;
+}
+
+function editarGolSumulaGestor(jogoId,indice){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j||!Array.isArray(j.gols)||!j.gols[indice])return;
+ const g=j.gols[indice];
+ const timeId=g.timeId;
+ const atletas=db.atletas.filter(a=>a.timeId===timeId&&a.categoria===j.categoria);
+ const escolha=prompt("Digite GC para Gol Contra ou o ID do atleta:\n\n"+atletas.map(a=>`${a.id} | #${numeroAtletaNoJogo(j,a.id)||""} ${a.nome}`).join("\n"),g.golContra?"GC":(g.atletaId||""));
+ if(escolha===null)return;
+ if(escolha.trim().toUpperCase()==="GC"){g.golContra=true;g.atletaId=null;g.atleta="Gol contra";g.numero="";}
+ else{
+   const a=atletas.find(x=>String(x.id)===escolha.trim());if(!a)return alert("Atleta não encontrado.");
+   g.golContra=false;g.atletaId=a.id;g.atleta=a.nome;g.numero=numeroAtletaNoJogo(j,a.id)||"";
+ }
+ const min=prompt("Minuto do gol:",String(g.minuto||1));if(min===null)return;
+ const n=parseInt(min,10);if(!Number.isFinite(n)||n<1)return alert("Minuto inválido.");g.minuto=n;
+ const per=prompt("Período: 1T ou 2T",g.periodo||"1T");if(per===null)return;
+ const pp=per.trim().toUpperCase();if(pp!=="1T"&&pp!=="2T")return alert("Período inválido.");g.periodo=pp;
+ save();render();
 }
 function save(){salvarSemRender();renderTudo()}
 
@@ -1353,7 +1372,7 @@ function colunaSumula(j,timeId,atletas,lado){
     </select>
     <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
     <button class="btn secondary" onclick="registrarGolTime('${j.id}','${lado}')">Adicionar gol</button>
-    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>#${esc(g.numero||"?")} — ${esc(g.atleta)}</strong><small>${esc(g.minuto)}' ${g.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
+    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>#${esc(g.numero||"?")} — ${g.golContra?"GOL CONTRA":esc(g.atleta)}</strong><small>${esc(g.minuto)}' ${g.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
    </div>
 
    <div class="event-box">
@@ -1848,7 +1867,7 @@ function renderTudo(){
 if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.22: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.23: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
