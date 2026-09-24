@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.21 PWA</title>
+<title>Gestor de Campeonatos V0.22 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.21 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.22 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.21 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.22 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -453,6 +453,24 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()}
 function uniq(a){return [...new Set((a||[]).filter(Boolean))]}
 function salvarSemRender(){localStorage.setItem(KEY,JSON.stringify(db))}
+
+function consolidarInscricoesDuplicadas(){
+ if(!Array.isArray(db.inscricoes)||db.inscricoes.length<2)return 0;
+ const unicas=[]; let removidas=0;
+ for(const atual of db.inscricoes){
+   const existente=unicas.find(x=>mesmaPessoaInscricao(x,atual));
+   if(!existente){unicas.push(atual);continue;}
+   removidas++;
+   const aprovado=!!(existente.aprovado||atual.aprovado);
+   for(const [k,v] of Object.entries(atual)){
+     if((existente[k]===undefined||existente[k]===null||existente[k]==="")&&v!==undefined&&v!==null&&v!=="")existente[k]=v;
+   }
+   if(aprovado)existente.aprovado=true;
+   try{existente.chave=chaveInscricao(existente)}catch(e){}
+ }
+ if(removidas)db.inscricoes=unicas;
+ return removidas;
+}
 function save(){salvarSemRender();renderTudo()}
 
 function migrarDados(){
@@ -873,6 +891,28 @@ function normalizaCategoria(raw){
  if(s.includes("SUB 14"))return "Sub-14";if(s.includes("SUB 08")||s.includes("SUB 8"))return "Sub-8";if(s.includes("SUB 07")||s.includes("SUB 7"))return "Sub-7 (revisar)";
  return String(raw||"").trim()
 }
+
+function normInscricao(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," ");}
+function rgInscricao(v){return String(v??"").replace(/\D/g,"");}
+function dataInscricao(v){
+ const s=String(v??"").trim(); if(!s)return "";
+ const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+ if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+ return s.slice(0,10);
+}
+function mesmaPessoaInscricao(a,b){
+ if(!a||!b)return false;
+ const na=normInscricao(a.nome),nb=normInscricao(b.nome);
+ if(!na||na!==nb)return false;
+ const ra=rgInscricao(a.rg),rb=rgInscricao(b.rg);
+ if(ra&&rb)return ra===rb;
+ const da=dataInscricao(a.nascimento||a.dataNascimento),db=dataInscricao(b.nascimento||b.dataNascimento);
+ return !!(da&&db&&da===db);
+}
+function localizarInscricaoExistente(x){
+ return db.inscricoes.find(i=>mesmaPessoaInscricao(i,x)) ||
+        db.inscricoes.find(i=>i.chave&&x.chave&&i.chave===x.chave);
+}
 function chaveInscricao(x){const rg=normalizeDoc(x.rg),nome=norm(x.nome);if(rg)return "RGN:"+rg+"|"+nome;return "NB:"+nome+"|"+x.nascimento}
 function mapRow(row,nomeArquivo){
  const nome=getByHeader(row,["nome completo do jogador","nome completo do jogador (a)"]);if(!nome)return null;
@@ -903,7 +943,7 @@ async function importarArquivo(){
   }
  }catch(e){console.error(e);return alert("Não foi possível ler o arquivo.")}
  let novas=0,ignoradas=0;
- rows.forEach(r=>{let x=mapRow(r,f.name);if(!x)return;x.chave=chaveInscricao(x);x=autoVincularInscricao(x);if(db.inscricoes.some(i=>i.chave===x.chave))ignoradas++;else{db.inscricoes.push(x);novas++}});
+ rows.forEach(r=>{let x=mapRow(r,f.name);if(!x)return;x.chave=chaveInscricao(x);x=autoVincularInscricao(x);if(!!localizarInscricaoExistente(x))ignoradas++;else{db.inscricoes.push(x);novas++}});
  ultimaImportacao={novas,ignoradas};save();$("impMensagem").textContent=`Importação concluída: ${novas} nova(s), ${ignoradas} já existente(s).`
 }
 function csvToObjects(text){
@@ -1805,9 +1845,10 @@ function renderTudo(){
    $("sumulaArea").innerHTML="<p>Selecione um jogo.</p>";
  }
 }
+if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.21: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.22: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
