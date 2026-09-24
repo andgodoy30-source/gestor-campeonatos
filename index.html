@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.24 PWA</title>
+<title>Gestor de Campeonatos V0.25 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -146,7 +146,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.24 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.25 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -426,7 +426,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.24 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.25 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -1115,7 +1115,7 @@ function classificacaoDaCategoria(cat){
    else if(gf>gc){b.V++;a.D++;b.PTS+=(db.campeonato?.pontosVitoria||3)}
    else{a.E++;b.E++;a.PTS++;b.PTS++}
  });
- Object.values(mapa).forEach(x=>x.SG=x.GP-x.GC);
+ Object.values(mapa).forEach(x=>{x.ajusteAdministrativo=ajusteAdministrativoTime(x.timeId,cat);x.PTS+=x.ajusteAdministrativo;x.SG=x.GP-x.GC});
  const criterio=$("classDesempate")?.value||"saldo";
  return Object.values(mapa).sort((a,b)=>{
    if(b.PTS!==a.PTS)return b.PTS-a.PTS;
@@ -1138,8 +1138,8 @@ function renderClassificacao(){
  const jogosEnc=db.jogos.filter(j=>j.categoria===cat&&j.status==="Encerrado").length;
  $("classResumo").textContent=`${cat} • ${arr.length} time(s) • ${jogosEnc} jogo(s) encerrado(s)`;
  $("classificacaoArea").innerHTML=arr.length?`<table class="class-table">
-  <thead><tr><th>Pos.</th><th style="text-align:left">Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>PTS</th></tr></thead>
-  <tbody>${arr.map((r,i)=>`<tr><td class="class-pos">${i+1}º</td><td class="team">${timeLogoClass(r.timeId)?`<img class="class-logo" src="${timeLogoClass(r.timeId)}">`:""}${esc(r.time)}</td><td>${r.J}</td><td>${r.V}</td><td>${r.E}</td><td>${r.D}</td><td>${r.GP}</td><td>${r.GC}</td><td>${r.SG>0?"+":""}${r.SG}</td><td><strong>${r.PTS}</strong></td></tr>`).join("")}</tbody>
+  <thead><tr><th>Pos.</th><th style="text-align:left">Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>ADM</th><th>PTS</th></tr></thead>
+  <tbody>${arr.map((r,i)=>`<tr><td class="class-pos">${i+1}º</td><td class="team">${timeLogoClass(r.timeId)?`<img class="class-logo" src="${timeLogoClass(r.timeId)}">`:""}${esc(r.time)}</td><td>${r.J}</td><td>${r.V}</td><td>${r.E}</td><td>${r.D}</td><td>${r.GP}</td><td>${r.GC}</td><td>${r.SG>0?"+":""}${r.SG}</td><td>${r.ajusteAdministrativo||0}</td><td><strong>${r.PTS}</strong></td></tr>`).join("")}</tbody>
  </table>`:"<p class='empty'>Nenhum time cadastrado nesta categoria.</p>"
 }
 function gerarClassificacaoPDF(){
@@ -1203,6 +1203,7 @@ function montarPacoteMesario(j){
      placarCasa:j.placarCasa||0,placarFora:j.placarFora||0,
      gols:j.gols||[],cartoes:j.cartoes||[],observacoes:j.observacoes||"",
      responsaveisSumula:j.responsaveisSumula||{arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""},
+     ocorrenciasAdministrativas:j.ocorrenciasAdministrativas||[],
      periodoAtual:j.periodoAtual||"1T",cronometros:j.cronometros||null,primeiroTempoEncerrado:!!j.primeiroTempoEncerrado
    }
  }
@@ -1224,7 +1225,7 @@ async function importarRetornoMesario(){
  const r=pacote.jogo;
  j.placarCasa=Number(r.placarCasa)||0;j.placarFora=Number(r.placarFora)||0;
  j.gols=Array.isArray(r.gols)?r.gols:[];j.cartoes=Array.isArray(r.cartoes)?r.cartoes:[];
- j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};j.periodoAtual=r.periodoAtual||j.periodoAtual||"1T";if(r.cronometros)j.cronometros=r.cronometros;j.primeiroTempoEncerrado=!!r.primeiroTempoEncerrado;
+ j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};j.ocorrenciasAdministrativas=Array.isArray(r.ocorrenciasAdministrativas)?r.ocorrenciasAdministrativas:[];j.periodoAtual=r.periodoAtual||j.periodoAtual||"1T";if(r.cronometros)j.cronometros=r.cronometros;j.primeiroTempoEncerrado=!!r.primeiroTempoEncerrado;
  garantirNumeracaoJogo(j);
  [...(r.casa?.atletas||[]),...(r.fora?.atletas||[])].forEach(a=>{const n=String(a.numero||"").trim();if(n)j.numeracaoAtletas[a.id]=n;else delete j.numeracaoAtletas[a.id]});
  j.status=r.status||"Encerrado";j.encerradoEm=r.encerradoEm||new Date().toISOString();
@@ -1553,6 +1554,7 @@ function carregarSumula(){
      ${colunaSumula(j,j.casaTimeId,ac,"casa")}
      ${colunaSumula(j,j.foraTimeId,af,"fora")}
    </div>
+   ${painelOcorrenciasAdministrativas(j)}
    <label>Observações gerais da partida</label>
    <textarea id="sumObservacoes">${esc(j.observacoes||"")}</textarea>
    <div class="grid">
@@ -1577,6 +1579,29 @@ function carregarSumula(){
  atualizarPreviewSumula(j.id)
 }
 
+
+function ocorrenciasAdministrativas(j){if(!Array.isArray(j.ocorrenciasAdministrativas))j.ocorrenciasAdministrativas=[];return j.ocorrenciasAdministrativas}
+function ajusteAdministrativoTime(timeId,categoria){let n=0;(db.jogos||[]).filter(j=>j.categoria===categoria).forEach(j=>ocorrenciasAdministrativas(j).forEach(o=>{if(o.timeId===timeId)n+=Number(o.ajustePontos)||0}));return n}
+function registrarOcorrenciaAdministrativa(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ let lado=prompt("Equipe envolvida: CASA ou FORA","CASA");if(lado===null)return;lado=lado.trim().toUpperCase();if(!["CASA","FORA"].includes(lado))return alert("Digite CASA ou FORA.");
+ const timeId=lado==="CASA"?j.casaTimeId:j.foraTimeId;
+ let motivo=prompt("Motivo:","Conduta inadequada da torcida");if(motivo===null||!motivo.trim())return;
+ let descricao=prompt("Descrição / decisão:","Partida encerrada após a terceira interrupção por ofensas da torcida.");if(descricao===null)return;
+ const aplicar=confirm("Aplicar perda de 3 pontos na classificação?\n\nO placar de campo permanecerá inalterado.");
+ ocorrenciasAdministrativas(j).push({id:"oc_"+Date.now(),timeId,motivo:motivo.trim(),descricao:descricao.trim(),ajustePontos:aplicar?-3:0,criadoEm:new Date().toISOString()});
+ salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
+}
+function editarOcorrenciaAdministrativa(jogoId,i){
+ const j=db.jogos.find(x=>x.id===jogoId),o=ocorrenciasAdministrativas(j)[i];if(!o)return;
+ let m=prompt("Motivo:",o.motivo||"");if(m===null)return;let d=prompt("Descrição / decisão:",o.descricao||"");if(d===null)return;
+ let a=prompt("Ajuste de pontos:",String(Number(o.ajustePontos)||0));if(a===null)return;a=Number(String(a).replace(",","."));if(!Number.isFinite(a))return alert("Valor inválido.");
+ o.motivo=m.trim();o.descricao=d.trim();o.ajustePontos=a;salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
+}
+function excluirOcorrenciaAdministrativa(jogoId,i){const j=db.jogos.find(x=>x.id===jogoId);if(!j||!confirm("Excluir esta ocorrência e seu ajuste de pontos?"))return;ocorrenciasAdministrativas(j).splice(i,1);salvarSemRender();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao()}
+function painelOcorrenciasAdministrativas(j){
+ const os=ocorrenciasAdministrativas(j);return `<div class="card" style="margin-top:12px"><h3>Ocorrências / Decisão administrativa</h3><p class="empty">O placar de campo não é alterado por penalidades administrativas.</p><button class="btn secondary" onclick="registrarOcorrenciaAdministrativa('${j.id}')">+ Registrar ocorrência</button><div class="event-list">${os.length?os.map((o,i)=>`<div class="item"><strong>${esc(timeNome(o.timeId))} — ${esc(o.motivo||"Ocorrência")}</strong><small>${esc(o.descricao||"")}${Number(o.ajustePontos)?` • Ajuste: ${o.ajustePontos} ponto(s)`:''}</small><div class="actions"><button class="btn secondary" onclick="editarOcorrenciaAdministrativa('${j.id}',${i})">Editar</button><button class="danger" onclick="excluirOcorrenciaAdministrativa('${j.id}',${i})">Excluir</button></div></div>`).join(""):"<span class='empty'>Nenhuma ocorrência registrada.</span>"}</div></div>`
+}
 function recalcularPlacarPorGols(j){
  j.placarCasa=j.gols.filter(g=>g.timeId===j.casaTimeId).length;
  j.placarFora=j.gols.filter(g=>g.timeId===j.foraTimeId).length;
@@ -1894,7 +1919,7 @@ function renderTudo(){
 if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.24: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.25: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
