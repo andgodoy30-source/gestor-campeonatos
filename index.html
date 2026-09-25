@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.26 PWA</title>
+<title>Gestor de Campeonatos V0.27 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -154,7 +154,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.26 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.27 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -434,7 +434,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.26 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.27 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -466,7 +466,7 @@ function consolidarInscricoesDuplicadas(){
  if(!Array.isArray(db.inscricoes)||db.inscricoes.length<2)return 0;
  const unicas=[]; let removidas=0;
  for(const atual of db.inscricoes){
-   const existente=unicas.find(x=>mesmaPessoaInscricao(x,atual));
+   const existente=unicas.find(x=>mesmaInscricao(x,atual));
    if(!existente){unicas.push(atual);continue;}
    removidas++;
    const aprovado=!!(existente.aprovado||atual.aprovado);
@@ -908,6 +908,7 @@ function dataInscricao(v){
  if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
  return s.slice(0,10);
 }
+function categoriaChaveInscricao(v){return normInscricao(v).replace(/[^a-z0-9]/g,"");}
 function mesmaPessoaInscricao(a,b){
  if(!a||!b)return false;
  const na=normInscricao(a.nome),nb=normInscricao(b.nome);
@@ -917,11 +918,16 @@ function mesmaPessoaInscricao(a,b){
  const da=dataInscricao(a.nascimento||a.dataNascimento),db=dataInscricao(b.nascimento||b.dataNascimento);
  return !!(da&&db&&da===db);
 }
-function localizarInscricaoExistente(x){
- return db.inscricoes.find(i=>mesmaPessoaInscricao(i,x)) ||
-        db.inscricoes.find(i=>i.chave&&x.chave&&i.chave===x.chave);
+function mesmaCategoriaInscricao(a,b){
+ const ca=categoriaChaveInscricao(a?.categoriaOficial||a?.categoria),cb=categoriaChaveInscricao(b?.categoriaOficial||b?.categoria);
+ return !!(ca&&cb&&ca===cb);
 }
-function chaveInscricao(x){const rg=normalizeDoc(x.rg),nome=norm(x.nome);if(rg)return "RGN:"+rg+"|"+nome;return "NB:"+nome+"|"+x.nascimento}
+function mesmaInscricao(a,b){return mesmaPessoaInscricao(a,b)&&mesmaCategoriaInscricao(a,b)}
+function localizarInscricaoExistente(x){
+ return db.inscricoes.find(i=>mesmaInscricao(i,x)) ||
+        db.inscricoes.find(i=>i.chave&&x.chave&&i.chave===x.chave&&mesmaCategoriaInscricao(i,x));
+}
+function chaveInscricao(x){const rg=normalizeDoc(x.rg),nome=norm(x.nome),cat=categoriaChaveInscricao(x.categoriaOficial||x.categoria);if(rg)return "RGN:"+rg+"|"+nome+"|CAT:"+cat;return "NB:"+nome+"|"+x.nascimento+"|CAT:"+cat}
 function mapRow(row,nomeArquivo){
  const nome=getByHeader(row,["nome completo do jogador","nome completo do jogador (a)"]);if(!nome)return null;
  const equipe=getByHeader(row,["aluno(a) da escolinha","aluno da escolinha"]),rawCat=getByHeader(row,["categoria"]);
@@ -1928,7 +1934,7 @@ function renderTudo(){
 if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.26: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.27: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
