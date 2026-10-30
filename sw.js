@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestor-campeonatos-v015-fix1';
+const CACHE_NAME = 'gestor-campeonatos-v016';
 const APP_SHELL = ['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 const EXTERNAL_LIBS = [
  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',

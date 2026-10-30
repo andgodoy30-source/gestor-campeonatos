@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.15 PWA</title>
+<title>Gestor de Campeonatos V0.16 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -143,7 +143,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.15 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.16 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -423,7 +423,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.15 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.16 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -642,16 +642,40 @@ function contextoRelatorio(){const cat=$("atlFiltroCategoria")?.value||"Todas as
 function gerarRelatorioPDF(){
  const c=contextoRelatorio();if(!c.atletas.length)return alert("Não há atletas para gerar o relatório.");
  if(!window.jspdf?.jsPDF)return imprimirRelatorio();
- const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),m=14;let y=18,x=m;
- try{if(c.escolinha?.logo){d.addImage(c.escolinha.logo,'PNG',m,10,22,22);x=40}}catch(e){}
- d.setFontSize(16);d.text(db.campeonato?.nome||'Campeonato',x,18);d.setFontSize(11);d.text('Relação de atletas inscritos',x,26);y=43;
- d.setFontSize(10);d.text(`Categoria: ${c.cat}`,m,y);y+=6;d.text(`Escolinha: ${c.escolinha?.nome||'Todas'}`,m,y);y+=6;d.text(`Time: ${c.time?.nomeTabela||'Todos'}`,m,y);y+=9;
- c.atletas.forEach((a,i)=>{if(y>282){d.addPage();y=18}d.text(`${i+1}. ${a.nome} | ${dataBR(a.nascimento)} | ${a.categoria} | ${timeNome(a.timeId)}`,m,y);y+=6});
- y+=3;d.setFont(undefined,'bold');d.text(`Total de inscritos: ${c.atletas.length}`,m,y);
- d.save('relacao-atletas.pdf')
+ const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),m=14;
+ const col=[14,24,91,117,140,192],width=[9,65,24,21,49,10];
+ let y=18,pagina=1;
+ const escreverCabecalho=()=>{
+  let x=m;
+  try{if(c.escolinha?.logo){d.addImage(c.escolinha.logo,'PNG',m,10,22,22);x=40}}catch(e){}
+  d.setFont('helvetica','bold');d.setFontSize(15);d.text(String(db.campeonato?.nome||'Campeonato').slice(0,48),x,18);
+  d.setFont('helvetica','normal');d.setFontSize(10);d.text('Relação de atletas inscritos',x,26);
+  d.setFontSize(9);d.text(`Categoria: ${c.cat}`,m,39);
+  d.text(`Escolinha: ${String(c.escolinha?.nome||'Todas').slice(0,65)}`,m,45);
+  d.text(`Time: ${String(c.time?.nomeTabela||'Todos').slice(0,65)}`,m,51);
+  d.setDrawColor(180);d.line(m,56,196,56);
+  y=63;d.setFont('helvetica','bold');d.setFontSize(8);
+  ['Nº','Atleta','Nascimento','Categoria','Time','J'].forEach((h,i)=>d.text(h,col[i],y));
+  d.line(m,y+2,196,y+2);y+=8;d.setFont('helvetica','normal');
+ };
+ escreverCabecalho();
+ c.atletas.forEach((a,i)=>{
+  if(y>277){d.addPage();pagina++;escreverCabecalho()}
+  const cells=[String(i+1),String(a.nome||''),dataBR(a.nascimento),String(a.categoria||''),String(timeNome(a.timeId)||''),String(jogosDisputadosAtleta(a.id))];
+  d.setFontSize(8);
+  cells.forEach((v,k)=>{
+   const text=d.splitTextToSize(v,width[k])[0]||'';
+   d.text(text,col[k],y,k===5?{align:'right'}:undefined);
+  });
+  d.setDrawColor(230);d.line(m,y+2,196,y+2);y+=7;
+ });
+ if(y>278){d.addPage();escreverCabecalho()}
+ d.setFont('helvetica','bold');d.setFontSize(9);d.text(`Total de inscritos: ${c.atletas.length}`,m,y+5);
+ d.save('relacao-atletas.pdf');
 }
 function imprimirRelatorio(){
- const c=contextoRelatorio(),w=window.open('','_blank');w.document.write(`<html><head><title>Relação de atletas</title><style>body{font-family:Arial;padding:25px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ccc;padding:7px;text-align:left}img{max-width:80px;max-height:80px}</style></head><body>${c.escolinha?.logo?`<img src="${c.escolinha.logo}">`:''}<h2>${esc(db.campeonato?.nome||'Campeonato')}</h2><h3>Relação de atletas inscritos</h3><p>Categoria: ${esc(c.cat)}<br>Escolinha: ${esc(c.escolinha?.nome||'Todas')}<br>Time: ${esc(c.time?.nomeTabela||'Todos')}</p><table><tr><th>Nº</th><th>Atleta</th><th>Nascimento</th><th>Categoria</th><th>Time</th></tr>${c.atletas.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.nome)}</td><td>${esc(dataBR(a.nascimento))}</td><td>${esc(a.categoria)}</td><td>${esc(timeNome(a.timeId))}</td></tr>`).join('')}</table><p><b>Total: ${c.atletas.length}</b></p><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()
+ const c=contextoRelatorio(),w=window.open('','_blank');if(!w)return alert('Permita a abertura de janelas para imprimir o relatório.');
+ w.document.write(`<html><head><title>Relação de atletas</title><style>body{font-family:Arial;padding:25px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ccc;padding:7px;text-align:left}img{max-width:80px;max-height:80px}</style></head><body>${c.escolinha?.logo?`<img src="${c.escolinha.logo}">`:''}<h2>${esc(db.campeonato?.nome||'Campeonato')}</h2><h3>Relação de atletas inscritos</h3><p>Categoria: ${esc(c.cat)}<br>Escolinha: ${esc(c.escolinha?.nome||'Todas')}<br>Time: ${esc(c.time?.nomeTabela||'Todos')}</p><table><tr><th>Nº</th><th>Atleta</th><th>Nascimento</th><th>Categoria</th><th>Time</th><th>Jogos (J)</th></tr>${c.atletas.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.nome)}</td><td>${esc(dataBR(a.nascimento))}</td><td>${esc(a.categoria)}</td><td>${esc(timeNome(a.timeId))}</td><td>${jogosDisputadosAtleta(a.id)}</td></tr>`).join('')}</table><p><b>Total: ${c.atletas.length}</b></p><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close()
 }
 async function gerarRelatorioImagem(){
  const c=contextoRelatorio();if(!c.atletas.length)return alert("Não há atletas para gerar o relatório.");
