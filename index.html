@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Gestor de Campeonatos V0.16 PWA</title>
+<title>Gestor de Campeonatos V0.28 PWA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -138,12 +138,23 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
 
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<style>
+.modal-edit-bg{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-edit{background:#fff;width:min(520px,100%);max-height:92vh;overflow:auto;border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);color:#17212b}
+.modal-edit h3{margin:0 0 14px}.modal-edit label{display:block;font-weight:700;margin-top:10px}
+.modal-edit select,.modal-edit input,.modal-edit textarea{width:100%;box-sizing:border-box;margin-top:5px}
+.modal-edit .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+</style>
 </head>
 <body>
 <header>
  <h1>Gestor de Campeonatos</h1>
- <p>V0.16 PWA — funcionamento offline e instalação no dispositivo</p>
+ <p>V0.28 PWA — funcionamento offline e instalação no dispositivo</p>
 </header>
 
 <div class="app">
@@ -423,7 +434,7 @@ hr{border:0;border-top:1px solid var(--border);margin:14px 0}
   </div>
  </section>
 
- <p class="footer">V0.16 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
+ <p class="footer">V0.28 PWA — Gestor instalável com cache offline. Dados continuam armazenados localmente no dispositivo.</p>
 </div>
 
 <script>
@@ -450,6 +461,24 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()}
 function uniq(a){return [...new Set((a||[]).filter(Boolean))]}
 function salvarSemRender(){localStorage.setItem(KEY,JSON.stringify(db))}
+
+function consolidarInscricoesDuplicadas(){
+ if(!Array.isArray(db.inscricoes)||db.inscricoes.length<2)return 0;
+ const unicas=[]; let removidas=0;
+ for(const atual of db.inscricoes){
+   const existente=unicas.find(x=>mesmaInscricao(x,atual));
+   if(!existente){unicas.push(atual);continue;}
+   removidas++;
+   const aprovado=!!(existente.aprovado||atual.aprovado);
+   for(const [k,v] of Object.entries(atual)){
+     if((existente[k]===undefined||existente[k]===null||existente[k]==="")&&v!==undefined&&v!==null&&v!=="")existente[k]=v;
+   }
+   if(aprovado)existente.aprovado=true;
+   try{existente.chave=chaveInscricao(existente)}catch(e){}
+ }
+ if(removidas)db.inscricoes=unicas;
+ return removidas;
+}
 function save(){salvarSemRender();renderTudo()}
 
 function migrarDados(){
@@ -929,7 +958,35 @@ function normalizaCategoria(raw){
  if(s.includes("SUB 14"))return "Sub-14";if(s.includes("SUB 08")||s.includes("SUB 8"))return "Sub-8";if(s.includes("SUB 07")||s.includes("SUB 7"))return "Sub-7 (revisar)";
  return String(raw||"").trim()
 }
-function chaveInscricao(x){const rg=normalizeDoc(x.rg);if(rg)return "RG:"+rg;return "NB:"+norm(x.nome)+"|"+x.nascimento}
+
+function normInscricao(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," ");}
+function rgInscricao(v){return String(v??"").replace(/\D/g,"");}
+function dataInscricao(v){
+ const s=String(v??"").trim(); if(!s)return "";
+ const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+ if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+ return s.slice(0,10);
+}
+function categoriaChaveInscricao(v){return normInscricao(v).replace(/[^a-z0-9]/g,"");}
+function mesmaPessoaInscricao(a,b){
+ if(!a||!b)return false;
+ const na=normInscricao(a.nome),nb=normInscricao(b.nome);
+ if(!na||na!==nb)return false;
+ const ra=rgInscricao(a.rg),rb=rgInscricao(b.rg);
+ if(ra&&rb)return ra===rb;
+ const da=dataInscricao(a.nascimento||a.dataNascimento),db=dataInscricao(b.nascimento||b.dataNascimento);
+ return !!(da&&db&&da===db);
+}
+function mesmaCategoriaInscricao(a,b){
+ const ca=categoriaChaveInscricao(a?.categoriaOficial||a?.categoria),cb=categoriaChaveInscricao(b?.categoriaOficial||b?.categoria);
+ return !!(ca&&cb&&ca===cb);
+}
+function mesmaInscricao(a,b){return mesmaPessoaInscricao(a,b)&&mesmaCategoriaInscricao(a,b)}
+function localizarInscricaoExistente(x){
+ return db.inscricoes.find(i=>mesmaInscricao(i,x)) ||
+        db.inscricoes.find(i=>i.chave&&x.chave&&i.chave===x.chave&&mesmaCategoriaInscricao(i,x));
+}
+function chaveInscricao(x){const rg=normalizeDoc(x.rg),nome=norm(x.nome),cat=categoriaChaveInscricao(x.categoriaOficial||x.categoria);if(rg)return "RGN:"+rg+"|"+nome+"|CAT:"+cat;return "NB:"+nome+"|"+x.nascimento+"|CAT:"+cat}
 function mapRow(row,nomeArquivo){
  const nome=getByHeader(row,["nome completo do jogador","nome completo do jogador (a)"]);if(!nome)return null;
  const equipe=getByHeader(row,["aluno(a) da escolinha","aluno da escolinha"]),rawCat=getByHeader(row,["categoria"]);
@@ -959,7 +1016,7 @@ async function importarArquivo(){
   }
  }catch(e){console.error(e);return alert("Não foi possível ler o arquivo.")}
  let novas=0,ignoradas=0;
- rows.forEach(r=>{let x=mapRow(r,f.name);if(!x)return;x.chave=chaveInscricao(x);x=autoVincularInscricao(x);if(db.inscricoes.some(i=>i.chave===x.chave||chaveInscricao(i)===x.chave))ignoradas++;else{db.inscricoes.push(x);novas++}});
+ rows.forEach(r=>{let x=mapRow(r,f.name);if(!x)return;x.chave=chaveInscricao(x);x=autoVincularInscricao(x);if(!!localizarInscricaoExistente(x))ignoradas++;else{db.inscricoes.push(x);novas++}});
  ultimaImportacao={novas,ignoradas};save();$("impMensagem").textContent=`Importação concluída: ${novas} nova(s), ${ignoradas} já existente(s).`
 }
 function csvToObjects(text){
@@ -969,19 +1026,48 @@ function csvToObjects(text){
  const h=parse(lines[0]);return lines.slice(1).map(l=>{const v=parse(l),o={};h.forEach((k,i)=>o[k]=v[i]||"");return o})
 }
 function salvarFontes(){db.fontes={url1:$("sheetUrl1").value.trim(),url2:$("sheetUrl2").value.trim()};save();alert("Links salvos.")}
-function setCategoriaInscricao(id,cat){const i=db.inscricoes.find(x=>x.id===id);if(i){i.categoriaOficial=cat;i.timeId="";autoVincularInscricao(i);save()}}
-function setTimeInscricao(id,timeId){const i=db.inscricoes.find(x=>x.id===id);if(i){i.timeId=timeId;save()}}
+function atletaDaInscricao(id){return db.atletas.find(a=>a.inscricaoId===id)}
+function atletaTemHistorico(a){
+ if(!a)return false;
+ return db.jogos.some(j=>(j.gols||[]).some(g=>g.atletaId===a.id)||(j.cartoes||[]).some(c=>c.atletaId===a.id)||(j.numeracaoAtletas&&Object.prototype.hasOwnProperty.call(j.numeracaoAtletas,a.id)));
+}
+function sincronizarAtletaInscricao(i){
+ const a=atletaDaInscricao(i.id);if(!a||i.status!=="Aprovada")return;
+ a.nome=i.nome;a.nascimento=i.nascimento;a.categoria=i.categoriaOficial||i.categoria;a.rg=i.rg;a.responsavel=i.responsavel;a.telefone=i.telefone;a.timeId=i.timeId;a.origem=i.fonte;
+}
+function setCategoriaInscricao(id,cat){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
+ const anterior=i.categoriaOficial||i.categoria||"";
+ if(i.status==="Aprovada"&&anterior&&cat&&anterior!==cat&&!confirm(`Este atleta está atualmente em ${anterior}. Deseja transferi-lo para ${cat}?`)){render();return}
+ i.categoriaOficial=cat;i.timeId="";autoVincularInscricao(i);sincronizarAtletaInscricao(i);save()
+}
+function setTimeInscricao(id,timeId){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;const anterior=i.timeId;
+ if(i.status==="Aprovada"&&anterior&&timeId&&anterior!==timeId&&!confirm(`Este atleta está atualmente em ${timeNome(anterior)}. Deseja transferi-lo para ${timeNome(timeId)}?`)){render();return}
+ i.timeId=timeId;sincronizarAtletaInscricao(i);save()
+}
+function retirarAtletaDoElencoPorInscricao(i){
+ const a=atletaDaInscricao(i.id);if(!a)return true;
+ if(atletaTemHistorico(a)){alert("Este atleta já possui vínculo com jogo/súmula. O cadastro será preservado para não quebrar o histórico.");return false}
+ db.atletas=db.atletas.filter(x=>x.id!==a.id);return true;
+}
+function excluirInscricao(id){
+ const i=db.inscricoes.find(x=>x.id===id);if(!i)return;const a=atletaDaInscricao(id);
+ if(a&&atletaTemHistorico(a))return alert("Esta inscrição não pode ser excluída porque o atleta já possui vínculo com jogo/súmula.");
+ if(!confirm(`Excluir definitivamente a inscrição de ${i.nome}?${a?" O atleta também será removido da lista de atletas.":""}`))return;
+ if(a)db.atletas=db.atletas.filter(x=>x.id!==a.id);db.inscricoes=db.inscricoes.filter(x=>x.id!==id);save()
+}
 function aprovarInscricao(id){
  const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
  const cat=i.categoriaOficial||i.categoria;
  if(!categoriasCampeonato().includes(cat))return alert("Selecione a categoria oficial.");
  const t=db.times.find(t=>t.id===i.timeId);if(!t||t.categoria!==cat)return alert("Escolha o time participante correto.");
- const ja=db.atletas.some(a=>(a.inscricaoId===id)||(i.rg&&normalizeDoc(a.rg)===i.rg&&a.categoria===cat));
+ const ja=db.atletas.some(a=>(a.inscricaoId===id)||(i.rg&&normalizeDoc(a.rg)===i.rg&&norm(a.nome)===norm(i.nome)&&a.categoria===cat));
  if(!ja)db.atletas.push({id:uid(),inscricaoId:i.id,timeId:i.timeId,nome:i.nome,nascimento:i.nascimento,categoria:cat,rg:i.rg,responsavel:i.responsavel,telefone:i.telefone,origem:i.fonte});
  i.status="Aprovada";i.categoriaOficial=cat;save()
 }
-function recusarInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){i.status="Recusada";save()}}
-function reabrirInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){i.status="Pendente";save()}}
+function recusarInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){retirarAtletaDoElencoPorInscricao(i);i.status="Recusada";save()}}
+function reabrirInscricao(id){const i=db.inscricoes.find(x=>x.id===id);if(i){retirarAtletaDoElencoPorInscricao(i);i.status="Pendente";save()}}
 function detalhesInscricao(id){
  const i=db.inscricoes.find(x=>x.id===id);if(!i)return;
  alert(`ATLETA: ${i.nome}\nRG: ${i.rg||"-"}\nNascimento: ${i.nascimento||"-"}\nCategoria recebida: ${i.categoria||"-"}\nCategoria oficial: ${i.categoriaOficial||"-"}\nTime: ${timeNome(i.timeId)}\nResponsável: ${i.responsavel||"-"}\nTelefone: ${i.telefone||"-"}\nEquipe informada no Forms: ${i.equipeInformada||"-"}\nFonte: ${i.fonte}`)
@@ -1009,7 +1095,7 @@ function renderInscricoes(){
       <div><label>Categoria oficial</label><select onchange="setCategoriaInscricao('${i.id}',this.value)"><option value="">Selecione...</option>${categoriasCampeonato().map(c=>`<option value="${esc(c)}" ${cat===c?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
       <div><label>Time participante</label><select onchange="setTimeInscricao('${i.id}',this.value)"><option value="">Selecione...</option>${times.map(t=>`<option value="${t.id}" ${i.timeId===t.id?"selected":""}>${esc(t.nomeTabela)}</option>`).join("")}</select></div>
     </div>
-    <div class="actions"><button class="light" onclick="detalhesInscricao('${i.id}')">Ver ficha</button>${i.status!=="Aprovada"?`<button class="primary" onclick="aprovarInscricao('${i.id}')">Aprovar</button>`:""}${i.status!=="Recusada"?`<button class="danger" onclick="recusarInscricao('${i.id}')">Recusar</button>`:""}${i.status!=="Pendente"?`<button class="amber" onclick="reabrirInscricao('${i.id}')">Reabrir</button>`:""}</div>
+    <div class="actions"><button class="light" onclick="detalhesInscricao('${i.id}')">Ver ficha</button>${i.status!=="Aprovada"?`<button class="primary" onclick="aprovarInscricao('${i.id}')">Aprovar</button>`:""}${i.status!=="Recusada"?`<button class="danger" onclick="recusarInscricao('${i.id}')">Recusar</button>`:""}${i.status!=="Pendente"?`<button class="amber" onclick="reabrirInscricao('${i.id}')">Reabrir</button>`:""}<button class="danger" onclick="excluirInscricao('${i.id}')">Excluir inscrição</button></div>
   </div>`
  }).join(""):"<p class='empty'>Nenhuma inscrição encontrada.</p>"
 }
@@ -1100,7 +1186,10 @@ function classificacaoDaCategoria(cat){
    const a=mapa[j.casaTimeId],b=mapa[j.foraTimeId];if(!a||!b)return;
    const gc=Number(j.placarCasa)||0,gf=Number(j.placarFora)||0;
    a.J++;b.J++;a.GP+=gc;a.GC+=gf;b.GP+=gf;b.GC+=gc;
-   if(gc>gf){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
+   const adm=j.decisaoAdministrativa?.vencedorTimeId;
+   if(adm===j.casaTimeId){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
+   else if(adm===j.foraTimeId){b.V++;a.D++;b.PTS+=(db.campeonato?.pontosVitoria||3)}
+   else if(gc>gf){a.V++;b.D++;a.PTS+=(db.campeonato?.pontosVitoria||3)}
    else if(gf>gc){b.V++;a.D++;b.PTS+=(db.campeonato?.pontosVitoria||3)}
    else{a.E++;b.E++;a.PTS++;b.PTS++}
  });
@@ -1175,8 +1264,8 @@ async function gerarClassificacaoImagem(){
 
 function montarPacoteMesario(j){
  garantirNumeracaoJogo(j);
- const casa=db.atletas.filter(a=>a.timeId===j.casaTimeId&&a.categoria===j.categoria).map(a=>({id:a.id,nome:a.nome,numero:numeroAtletaNoJogo(j,a.id)}));
- const fora=db.atletas.filter(a=>a.timeId===j.foraTimeId&&a.categoria===j.categoria).map(a=>({id:a.id,nome:a.nome,numero:numeroAtletaNoJogo(j,a.id)}));
+ const casa=db.atletas.filter(a=>a.timeId===j.casaTimeId&&a.categoria===j.categoria).map(a=>({id:a.id,nome:a.nome,nascimento:a.nascimento||'',numero:numeroAtletaNoJogo(j,a.id)}));
+ const fora=db.atletas.filter(a=>a.timeId===j.foraTimeId&&a.categoria===j.categoria).map(a=>({id:a.id,nome:a.nome,nascimento:a.nascimento||'',numero:numeroAtletaNoJogo(j,a.id)}));
  const tc=db.times.find(t=>t.id===j.casaTimeId),tf=db.times.find(t=>t.id===j.foraTimeId);
  const ec=db.escolinhas.find(e=>e.id===tc?.escolinhaId),ef=db.escolinhas.find(e=>e.id===tf?.escolinhaId);
  const li=localInfoJogo(j);
@@ -1191,7 +1280,9 @@ function montarPacoteMesario(j){
      fora:{timeId:j.foraTimeId,nome:timeNome(j.foraTimeId),logo:ef?.logo||"",atletas:fora},
      placarCasa:j.placarCasa||0,placarFora:j.placarFora||0,
      gols:j.gols||[],cartoes:j.cartoes||[],observacoes:j.observacoes||"",
-     responsaveisSumula:j.responsaveisSumula||{arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""}
+     responsaveisSumula:j.responsaveisSumula||{arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""},
+     decisaoAdministrativa:j.decisaoAdministrativa||null,
+     periodoAtual:j.periodoAtual||"1T",cronometros:j.cronometros||null,primeiroTempoEncerrado:!!j.primeiroTempoEncerrado
    }
  }
 }
@@ -1212,7 +1303,7 @@ async function importarRetornoMesario(){
  const r=pacote.jogo;
  j.placarCasa=Number(r.placarCasa)||0;j.placarFora=Number(r.placarFora)||0;
  j.gols=Array.isArray(r.gols)?r.gols:[];j.cartoes=Array.isArray(r.cartoes)?r.cartoes:[];
- j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};
+ j.observacoes=r.observacoes||"";j.responsaveisSumula=r.responsaveisSumula||{};j.decisaoAdministrativa=r.decisaoAdministrativa||null;j.periodoAtual=r.periodoAtual||j.periodoAtual||"1T";if(r.cronometros)j.cronometros=r.cronometros;j.primeiroTempoEncerrado=!!r.primeiroTempoEncerrado;
  garantirNumeracaoJogo(j);
  [...(r.casa?.atletas||[]),...(r.fora?.atletas||[])].forEach(a=>{const n=String(a.numero||"").trim();if(n)j.numeracaoAtletas[a.id]=n;else delete j.numeracaoAtletas[a.id]});
  j.status=r.status||"Encerrado";j.encerradoEm=r.encerradoEm||new Date().toISOString();
@@ -1249,49 +1340,67 @@ function logoDoTime(timeId){
 }
 
 function garantirCronometro(j){
- if(!j.cronometro)j.cronometro={segundos:0,rodando:false,inicioTimestamp:null};
-}
-function segundosAtuais(j){
- garantirCronometro(j);
- if(j.cronometro.rodando && j.cronometro.inicioTimestamp){
-   return j.cronometro.segundos + Math.max(0,Math.floor((Date.now()-j.cronometro.inicioTimestamp)/1000))
+ if(!j.periodoAtual)j.periodoAtual="1T";
+ if(!j.cronometros){
+   const antigo=j.cronometro||{segundos:0,rodando:false,inicioTimestamp:null};
+   j.cronometros={"1T":antigo,"2T":{segundos:0,rodando:false,inicioTimestamp:null}};
  }
- return j.cronometro.segundos||0
+ if(!j.cronometros["1T"])j.cronometros["1T"]={segundos:0,rodando:false,inicioTimestamp:null};
+ if(!j.cronometros["2T"])j.cronometros["2T"]={segundos:0,rodando:false,inicioTimestamp:null};
+ j.cronometro=j.cronometros[j.periodoAtual];
 }
-function formatarTempo(seg){
- const m=Math.floor(seg/60),s=seg%60;return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
+function periodoRotulo(j){return j.periodoAtual==="2T"?"2º Tempo":"1º Tempo"}
+function segundosAtuais(j){
+ garantirCronometro(j);const c=j.cronometros[j.periodoAtual];
+ if(c.rodando&&c.inicioTimestamp)return c.segundos+Math.max(0,Math.floor((Date.now()-c.inicioTimestamp)/1000));
+ return c.segundos||0
 }
-function minutoAtualEvento(j){
- return Math.max(1,Math.floor(segundosAtuais(j)/60)+1)
-}
+function formatarTempo(seg){const m=Math.floor(seg/60),ss=seg%60;return `${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`}
+function minutoAtualEvento(j){return Math.max(1,Math.floor(segundosAtuais(j)/60)+1)}
 function atualizarCronometroTela(){
  const el=$("cronometroDisplay");if(!el)return;
  const j=db.jogos.find(x=>x.id===$("sumulaJogo").value);if(!j)return;
- el.textContent=formatarTempo(segundosAtuais(j))
+ el.textContent=formatarTempo(segundosAtuais(j));
+ const pe=$("periodoDisplay");if(pe)pe.textContent=periodoRotulo(j)
 }
 function iniciarCronometro(jogoId){
  const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;garantirCronometro(j);
- if(!j.cronometro.rodando){j.cronometro.rodando=true;j.cronometro.inicioTimestamp=Date.now();salvarSemRender()}
+ const c=j.cronometros[j.periodoAtual];
+ if(!c.rodando){c.rodando=true;c.inicioTimestamp=Date.now();j.cronometro=c;salvarSemRender()}
  if(cronometroInterval)clearInterval(cronometroInterval);
  cronometroInterval=setInterval(atualizarCronometroTela,1000);atualizarCronometroTela()
 }
 function pausarCronometro(jogoId){
  const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;garantirCronometro(j);
- if(j.cronometro.rodando){j.cronometro.segundos=segundosAtuais(j);j.cronometro.rodando=false;j.cronometro.inicioTimestamp=null;salvarSemRender()}
+ const c=j.cronometros[j.periodoAtual];
+ if(c.rodando){c.segundos=segundosAtuais(j);c.rodando=false;c.inicioTimestamp=null;j.cronometro=c;salvarSemRender()}
  if(cronometroInterval){clearInterval(cronometroInterval);cronometroInterval=null}
  atualizarCronometroTela()
 }
 function zerarCronometro(jogoId){
- const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
- if(!confirm("Zerar o cronômetro desta partida?"))return;
- j.cronometro={segundos:0,rodando:false,inicioTimestamp:null};salvarSemRender();
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;garantirCronometro(j);
+ if(!confirm(`Zerar o cronômetro do ${periodoRotulo(j)}?`))return;
+ j.cronometros[j.periodoAtual]={segundos:0,rodando:false,inicioTimestamp:null};
+ j.cronometro=j.cronometros[j.periodoAtual];salvarSemRender();
  if(cronometroInterval){clearInterval(cronometroInterval);cronometroInterval=null}
  atualizarCronometroTela()
+}
+function encerrarPrimeiroTempo(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ if(!confirm("Encerrar o 1º tempo?"))return;
+ pausarCronometro(jogoId);j.primeiroTempoEncerrado=true;salvarSemRender();
+ $("sumulaJogo").value=jogoId;carregarSumula()
+}
+function iniciarSegundoTempo(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;garantirCronometro(j);
+ j.periodoAtual="2T";j.cronometro=j.cronometros["2T"];salvarSemRender();
+ $("sumulaJogo").value=jogoId;carregarSumula();iniciarCronometro(jogoId)
 }
 function sincronizarCronometroAoAbrir(j){
  garantirCronometro(j);
  if(cronometroInterval){clearInterval(cronometroInterval);cronometroInterval=null}
- if(j.cronometro.rodando)cronometroInterval=setInterval(atualizarCronometroTela,1000)
+ const c=j.cronometros[j.periodoAtual];
+ if(c.rodando)cronometroInterval=setInterval(atualizarCronometroTela,1000)
 }
 
 function colunaSumula(j,timeId,atletas,lado){
@@ -1310,7 +1419,7 @@ function colunaSumula(j,timeId,atletas,lado){
     ${sel.length?sel.map(a=>`<div class="player-row">
       <input type="checkbox" checked>
       <input type="number" min="0" inputmode="numeric" value="${esc(numeroAtletaNoJogo(j,a.id))}" placeholder="Nº" onchange="atualizarNumeroAtleta('${a.id}',this.value,'${j.id}')">
-      <span>${esc(a.nome)}</span>
+      <span>${esc(a.nome)} <small>— Nasc.: ${esc(dataBR(a.nascimento))}</small></span>
     </div>`).join(""):"<p>Sem atletas cadastrados.</p>"}
    </div>
 
@@ -1320,10 +1429,11 @@ function colunaSumula(j,timeId,atletas,lado){
     <select id="golAtleta_${lado}">
       <option value="">Selecione...</option>
       ${sel.map(a=>`<option value="${a.id}">${atletaRotulo(a,j)}</option>`).join("")}
+      <option value="__GOL_CONTRA__">⚽ GOL CONTRA</option>
     </select>
     <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
     <button class="btn secondary" onclick="registrarGolTime('${j.id}','${lado}')">Adicionar gol</button>
-    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>#${esc(g.numero||"?")} — ${esc(g.atleta)}</strong><small>${esc(g.minuto)}'</small><div class="actions"><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
+    <div class="event-list">${gols.length?gols.map(g=>{const idx=j.gols.indexOf(g);return `<div class="item"><strong>${g.golContra?"⚽ GOL CONTRA":("#"+esc(g.golContra?"":(g.numero||"?"))+" — "+esc(g.atleta))}</strong><small>${esc(g.minuto)}' ${g.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="btn secondary" onclick="editarGolGestor('${j.id}',${idx},'${lado}')">Editar</button><button class="danger" onclick="excluirGol('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum gol registrado.</span>"}</div>
    </div>
 
    <div class="event-box">
@@ -1337,11 +1447,41 @@ function colunaSumula(j,timeId,atletas,lado){
     <select id="cartaoTipo_${lado}"><option>Amarelo</option><option>Vermelho</option></select>
     <div class="empty">Minuto registrado automaticamente pelo cronômetro.</div>
     <button class="btn secondary" onclick="registrarCartaoTime('${j.id}','${lado}')">Adicionar cartão</button>
-    <div class="event-list">${cartoes.length?cartoes.map(c=>{const idx=j.cartoes.indexOf(c);return `<div class="item"><strong>${esc(c.tipo)} — #${esc(c.numero||"?")} — ${esc(c.atleta)}</strong><small>${esc(c.minuto)}'</small><div class="actions"><button class="danger" onclick="excluirCartao('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum cartão registrado.</span>"}</div>
+    <div class="event-list">${cartoes.length?cartoes.map(c=>{const idx=j.cartoes.indexOf(c);return `<div class="item"><strong>${esc(c.tipo)} — #${esc(c.numero||"?")} — ${esc(c.atleta)}</strong><small>${esc(c.minuto)}' ${c.periodo==="2T"?"2ºT":"1ºT"}</small><div class="actions"><button class="btn secondary" onclick="editarCartaoGestor('${j.id}',${idx},'${lado}')">Editar</button><button class="danger" onclick="excluirCartao('${j.id}',${idx})">Excluir</button></div></div>`}).join(""):"<span class='empty'>Nenhum cartão registrado.</span>"}</div>
    </div>
  </div>`
 }
 
+
+
+function editarGolGestor(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),g=j?.gols?.[index];if(!j||!g)return;
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId;
+ const atletas=db.atletas.filter(a=>a.timeId===tid&&a.categoria===j.categoria);
+ const opts=atletas.map(a=>`<option value="${a.id}" ${!g.golContra&&g.atletaId===a.id?"selected":""}>#${esc(numeroAtletaNoJogo(j,a.id)||"?")} — ${esc(a.nome)}</option>`).join("");
+ abrirModalEdicao(`<h3>Editar gol</h3><label>Atleta</label><select id="editGolAtleta"><option value="__GOL_CONTRA__" ${g.golContra?"selected":""}>⚽ GOL CONTRA</option>${opts}</select><label>Minuto</label><input id="editGolMin" type="number" min="1" value="${esc(g.minuto||1)}"><label>Tempo</label><select id="editGolPeriodo"><option value="1T" ${g.periodo!=="2T"?"selected":""}>1º Tempo</option><option value="2T" ${g.periodo==="2T"?"selected":""}>2º Tempo</option></select><div class="actions"><button class="btn light" onclick="fecharModalEdicao()">Cancelar</button><button class="btn primary" onclick="salvarEdicaoGol('${j.id}',${index},'${lado}')">Salvar</button></div>`);
+}
+function salvarEdicaoGol(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),g=j?.gols?.[index];if(!j||!g)return;
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId,v=$("editGolAtleta").value;
+ if(v==="__GOL_CONTRA__"){g.golContra=true;g.atletaId=null;g.atleta="Gol contra";g.numero="";g.timeId=tid}
+ else{const a=db.atletas.find(x=>x.id===v);if(!a)return alert("Selecione um atleta.");const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");g.golContra=false;g.atletaId=a.id;g.atleta=a.nome;g.numero=numero;g.timeId=tid}
+ g.minuto=Math.max(1,parseInt($("editGolMin").value,10)||1);g.periodo=$("editGolPeriodo").value;
+ recalcularPlacarPorGols(j);salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();
+}
+function editarCartaoGestor(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),c=j?.cartoes?.[index];if(!j||!c)return;
+ const tid=lado==="casa"?j.casaTimeId:j.foraTimeId,atletas=db.atletas.filter(a=>a.timeId===tid&&a.categoria===j.categoria);
+ const opts=atletas.map(a=>`<option value="${a.id}" ${c.atletaId===a.id?"selected":""}>#${esc(numeroAtletaNoJogo(j,a.id)||"?")} — ${esc(a.nome)}</option>`).join("");
+ abrirModalEdicao(`<h3>Editar cartão</h3><label>Atleta</label><select id="editCartaoAtleta">${opts}</select><label>Cartão</label><select id="editCartaoTipo"><option ${c.tipo==="Amarelo"?"selected":""}>Amarelo</option><option ${c.tipo==="Azul"?"selected":""}>Azul</option><option ${c.tipo==="Vermelho"?"selected":""}>Vermelho</option></select><label>Minuto</label><input id="editCartaoMin" type="number" min="1" value="${esc(c.minuto||1)}"><label>Tempo</label><select id="editCartaoPeriodo"><option value="1T" ${c.periodo!=="2T"?"selected":""}>1º Tempo</option><option value="2T" ${c.periodo==="2T"?"selected":""}>2º Tempo</option></select><div class="actions"><button class="btn light" onclick="fecharModalEdicao()">Cancelar</button><button class="btn primary" onclick="salvarEdicaoCartao('${j.id}',${index},'${lado}')">Salvar</button></div>`);
+}
+function salvarEdicaoCartao(jogoId,index,lado){
+ const j=db.jogos.find(x=>x.id===jogoId),c=j?.cartoes?.[index];if(!j||!c)return;
+ const a=db.atletas.find(x=>x.id===$("editCartaoAtleta").value);if(!a)return alert("Selecione um atleta.");
+ const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa.");
+ c.atletaId=a.id;c.atleta=a.nome;c.numero=numero;c.timeId=lado==="casa"?j.casaTimeId:j.foraTimeId;c.tipo=$("editCartaoTipo").value;c.minuto=Math.max(1,parseInt($("editCartaoMin").value,10)||1);c.periodo=$("editCartaoPeriodo").value;
+ salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();
+}
 function excluirGol(jogoId,index){
  const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
  if(!confirm("Excluir este gol registrado?"))return;
@@ -1446,7 +1586,7 @@ function limparSumulaJogo(id){
  j.gols=[];
  j.cartoes=[];
  j.observacoes="";
- j.cronometro={segundos:0,rodando:false,inicioTimestamp:null};
+ j.periodoAtual="1T";j.primeiroTempoEncerrado=false;j.cronometros={"1T":{segundos:0,rodando:false,inicioTimestamp:null},"2T":{segundos:0,rodando:false,inicioTimestamp:null}};j.cronometro=j.cronometros["1T"];
  j.responsaveisSumula={arbitro:"",mesario:"",responsavelCasa:"",responsavelFora:""};
  j.numeracaoAtletas={};
  delete j.encerradoEm;
@@ -1468,10 +1608,13 @@ function carregarSumula(){
    </div>
    <div class="score">${esc(timeNome(j.casaTimeId))} ${j.placarCasa} x ${j.placarFora} ${esc(timeNome(j.foraTimeId))}</div>
    <div class="timer-box">
+     <strong id="periodoDisplay">${periodoRotulo(j)}</strong>
      <span class="timer-display" id="cronometroDisplay">${formatarTempo(segundosAtuais(j))}</span>
      <button class="btn primary" onclick="iniciarCronometro('${j.id}')">Iniciar</button>
      <button class="btn amber" onclick="pausarCronometro('${j.id}')">Pausar</button>
      <button class="btn light" onclick="zerarCronometro('${j.id}')">Zerar</button>
+     ${j.periodoAtual==="1T"&&!j.primeiroTempoEncerrado?`<button class="btn secondary" onclick="encerrarPrimeiroTempo('${j.id}')">Encerrar 1º Tempo</button>`:""}
+     ${j.periodoAtual==="1T"&&j.primeiroTempoEncerrado?`<button class="btn primary" onclick="iniciarSegundoTempo('${j.id}')">Iniciar 2º Tempo</button>`:""}
    </div>
    <div class="row">
      <div><label>Placar ${esc(timeNome(j.casaTimeId))}</label><input id="sumPlacarCasa" type="number" min="0" value="${j.placarCasa}"></div>
@@ -1481,6 +1624,7 @@ function carregarSumula(){
      ${colunaSumula(j,j.casaTimeId,ac,"casa")}
      ${colunaSumula(j,j.foraTimeId,af,"fora")}
    </div>
+   ${painelDecisaoAdministrativa(j)}
    <label>Observações gerais da partida</label>
    <textarea id="sumObservacoes">${esc(j.observacoes||"")}</textarea>
    <div class="grid">
@@ -1505,17 +1649,53 @@ function carregarSumula(){
  atualizarPreviewSumula(j.id)
 }
 
+
+function decisaoAdministrativa(j){return j.decisaoAdministrativa||null}
+function abrirDecisaoAdministrativa(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ const d=decisaoAdministrativa(j)||{};
+ const casa=timeNome(j.casaTimeId),fora=timeNome(j.foraTimeId);
+ abrirModalEdicao(`<h3>Decisão administrativa</h3>
+ <p class="empty">O placar e os gols da partida permanecem inalterados. Esta decisão altera apenas V/E/D e pontos da classificação.</p>
+ <label>Equipe declarada vencedora</label><select id="admVencedor"><option value="">Selecione...</option><option value="${j.casaTimeId}" ${d.vencedorTimeId===j.casaTimeId?"selected":""}>${esc(casa)}</option><option value="${j.foraTimeId}" ${d.vencedorTimeId===j.foraTimeId?"selected":""}>${esc(fora)}</option></select>
+ <label>Motivo</label><input id="admMotivo" value="${esc(d.motivo||"Conduta inadequada da torcida")}">
+ <label>Descrição / decisão</label><textarea id="admDescricao">${esc(d.descricao||"")}</textarea>
+ <div class="actions">${d.vencedorTimeId?`<button class="btn danger" onclick="removerDecisaoAdministrativa('${j.id}')">Remover decisão</button>`:""}<button class="btn light" onclick="fecharModalEdicao()">Cancelar</button><button class="btn primary" onclick="salvarDecisaoAdministrativa('${j.id}')">Salvar</button></div>`);
+}
+function salvarDecisaoAdministrativa(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j)return;
+ const vencedor=$("admVencedor").value;if(!vencedor)return alert("Selecione a equipe declarada vencedora.");
+ j.decisaoAdministrativa={vencedorTimeId:vencedor,motivo:$("admMotivo").value.trim(),descricao:$("admDescricao").value.trim(),criadoEm:j.decisaoAdministrativa?.criadoEm||new Date().toISOString()};
+ salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
+}
+function removerDecisaoAdministrativa(jogoId){
+ const j=db.jogos.find(x=>x.id===jogoId);if(!j||!confirm("Remover a decisão administrativa desta partida?"))return;
+ delete j.decisaoAdministrativa;salvarSemRender();fecharModalEdicao();$("sumulaJogo").value=jogoId;carregarSumula();renderClassificacao();
+}
+function painelDecisaoAdministrativa(j){
+ const d=decisaoAdministrativa(j);
+ return `<div class="card" style="margin-top:12px"><h3>Decisão administrativa</h3>${d&&d.vencedorTimeId?`<div class="notice"><strong>Vitória administrativa: ${esc(timeNome(d.vencedorTimeId))}</strong><br>${esc(d.motivo||"")}${d.descricao?`<br>${esc(d.descricao)}`:""}<br><small>Placar e gols de campo preservados.</small></div>`:`<p class="empty">Nenhuma decisão administrativa registrada.</p>`}<button class="btn secondary" onclick="abrirDecisaoAdministrativa('${j.id}')">${d&&d.vencedorTimeId?"Editar decisão":"+ Registrar decisão"}</button></div>`;
+}
+function abrirModalEdicao(html){fecharModalEdicao();const bg=document.createElement("div");bg.id="modalEdicao";bg.className="modal-edit-bg";bg.innerHTML=`<div class="modal-edit">${html}</div>`;bg.addEventListener("click",e=>{if(e.target===bg)fecharModalEdicao()});document.body.appendChild(bg)}
+function fecharModalEdicao(){document.getElementById("modalEdicao")?.remove()}
 function recalcularPlacarPorGols(j){
  j.placarCasa=j.gols.filter(g=>g.timeId===j.casaTimeId).length;
  j.placarFora=j.gols.filter(g=>g.timeId===j.foraTimeId).length;
 }
 
 function registrarGolTime(jogoId,lado){
- const j=db.jogos.find(x=>x.id===jogoId),sel=$(`golAtleta_${lado}`),a=db.atletas.find(x=>x.id===sel.value);
- if(!a)return alert("Selecione o número do atleta.");
- const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
+ const j=db.jogos.find(x=>x.id===jogoId),sel=$(`golAtleta_${lado}`);
+ if(!j||!sel)return;
  const min=minutoAtualEvento(j);
- j.gols.push({atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,minuto:min});
+ if(sel.value==="__GOL_CONTRA__"){
+   const beneficiado=lado==="casa"?j.casaTimeId:j.foraTimeId;
+   j.gols.push({golContra:true,atletaId:null,atleta:"Gol contra",numero:"",timeId:beneficiado,minuto:min,periodo:j.periodoAtual||"1T"});
+ }else{
+   const a=db.atletas.find(x=>x.id===sel.value);
+   if(!a)return alert("Selecione o atleta ou GOL CONTRA.");
+   const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
+   j.gols.push({golContra:false,atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,minuto:min,periodo:j.periodoAtual||"1T"});
+ }
  recalcularPlacarPorGols(j);
  salvarSemRender();
  $("sumulaJogo").value=jogoId;
@@ -1526,7 +1706,7 @@ function registrarCartaoTime(jogoId,lado){
  if(!a)return alert("Selecione o número do atleta.");
  const numero=numeroAtletaNoJogo(j,a.id);if(!numero)return alert("Informe primeiro o número da camisa deste atleta para esta partida.");
  const tipo=$(`cartaoTipo_${lado}`).value,min=minutoAtualEvento(j);
- j.cartoes.push({atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,tipo,minuto:min});
+ j.cartoes.push({atletaId:a.id,atleta:a.nome,numero,timeId:a.timeId,tipo,minuto:min,periodo:j.periodoAtual||"1T"});
  salvarSemRender();
  $("sumulaJogo").value=jogoId;
  carregarSumula();atualizarPreviewSumula(jogoId)
@@ -1601,15 +1781,16 @@ function gerarSumulaPDF(id){
    let yy=y+8;
    fill([226,233,240]);d.rect(x,yy,w,6,"F");
    txt(azulEscuro);d.setFont(undefined,"bold");d.setFontSize(7.5);
-   d.text("Nº",x+7,yy+4,{align:"center"});d.text("ATLETA",x+12,yy+4);
+   d.text("Nº",x+7,yy+4,{align:"center"});d.text("ATLETA",x+12,yy+4);d.text("NASC.",x+w-5,yy+4,{align:"right"});
    yy+=6;
-   d.setFont(undefined,"normal");d.setFontSize(7.7);txt(texto);
+   d.setFont(undefined,"normal");d.setFontSize(7.2);txt(texto);
    const maxRows=Math.max(8,arr.length);
    for(let i=0;i<maxRows;i++){
      fill(i%2===0?[250,251,252]:[244,247,249]);stroke([218,225,232]);d.rect(x,yy,w,5.3,"FD");
      if(arr[i]){
        d.text(String(numeroAtletaNoJogo(j,arr[i].id)||"-"),x+7,yy+3.6,{align:"center"});
-       d.text(String(arr[i].nome).slice(0,38),x+12,yy+3.6);
+       d.text(String(arr[i].nome).slice(0,28),x+12,yy+3.6);
+       d.text(dataBR(arr[i].nascimento),x+w-5,yy+3.6,{align:"right"});
      }
      yy+=5.3
    }
@@ -1727,11 +1908,33 @@ function exportarBackup(){
  a.href=url;a.download=`backup-gestor-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url)
 }
 async function restaurarBackup(){
- const f=$("arquivoBackup").files[0];if(!f)return alert("Selecione um arquivo de backup.");
- if(!confirm("Isso substituirá os dados atuais deste navegador. Continuar?"))return;
- try{const novo=JSON.parse(await f.text());db=novo;localStorage.setItem(KEY,JSON.stringify(db));location.reload()}catch(e){alert("Arquivo de backup inválido.")}
+ const input=document.querySelector('input[type="file"][accept*="json"]')||document.getElementById("backupFile")||document.querySelector('input[type="file"]');
+ const f=input?.files?.[0];if(!f)return alert("Selecione o arquivo de backup.");
+ if(!confirm("Restaurar este backup? Os dados atuais deste aparelho serão substituídos."))return;
+ try{
+   // V0.21: leitura direta do arquivo, evitando cópias intermediárias grandes na memória.
+   const texto=await f.text();
+   let novo;
+   try{novo=JSON.parse(texto)}catch(e){return alert("O arquivo selecionado não é um backup JSON válido.");}
+   if(!novo||typeof novo!=="object")return alert("Backup inválido.");
+   // Validação mínima antes de substituir a base atual.
+   const campos=["equipes","atletas","jogos","inscricoes"];
+   if(!campos.some(k=>Array.isArray(novo[k])))return alert("O arquivo não possui a estrutura esperada do Gestor de Campeonatos.");
+   try{
+     localStorage.setItem(KEY,texto);
+   }catch(e){
+     if(e?.name==="QuotaExceededError"||String(e).toLowerCase().includes("quota"))
+       return alert("O navegador não possui espaço de armazenamento suficiente para restaurar este backup. Feche outras abas/aplicativos e tente novamente.");
+     throw e;
+   }
+   // Libera a string grande antes de reconstruir a interface.
+   novo=null;
+   setTimeout(()=>location.reload(),80);
+ }catch(e){
+   console.error(e);
+   alert("Não foi possível concluir a restauração neste aparelho. Feche outras abas/aplicativos e tente novamente.");
+ }
 }
-
 function renderTudo(){
  $("stEscolinhas").textContent=db.escolinhas.length;$("stTimes").textContent=db.times.length;$("stPendentes").textContent=db.inscricoes.filter(i=>i.status==="Pendente").length;$("stAtletas").textContent=db.atletas.length;$("stJogos").textContent=db.jogos.length;$("stEncerrados").textContent=db.jogos.filter(j=>j.status==="Encerrado").length;
  $("impTotal").textContent=db.inscricoes.length;$("impNovas").textContent=ultimaImportacao.novas;$("impIgnoradas").textContent=ultimaImportacao.ignoradas;
@@ -1789,9 +1992,10 @@ function renderTudo(){
    $("sumulaArea").innerHTML="<p>Selecione um jogo.</p>";
  }
 }
+if(consolidarInscricoesDuplicadas()) save();
 renderTudo();
 
-// PWA V0.14: registra o Service Worker sem interferir no JavaScript do Gestor.
+// PWA V0.28: registra o Service Worker sem interferir no JavaScript do Gestor.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker:', err));
